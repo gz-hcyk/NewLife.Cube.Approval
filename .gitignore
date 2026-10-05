@@ -10,6 +10,8 @@
 *.userosscache
 *.sln.docstates
 *.env
+# 审批前端的模板环境文件需要入库。本地覆盖仍用 web/.env.local。
+!web/.env
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -426,3 +428,9 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# 审批示例运行时库（SQLite）
+Data/
+*.db
+*.db-shm
+*.db-wal
