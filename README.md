@@ -81,7 +81,7 @@ ApprovalHost.InstanceChanged += instanceId =>
 };
 ```
 
-同意、驳回、撤回、重新提交（含同一请求号重放）都会触发。引擎里的业务主体仍是魔方用户编号，字段键 `studentUserId`、办理人规则 `subjectCounselor` 是第 0–10 轮的引擎契约，不是请假表。
+同意、驳回、撤回、重新提交（含同一请求号重放）都会触发。重放只还给当初写下这条历史的操作者；别人拿着同一个请求号，包括网关自动生成的 `choose-轮次-节点`，会被拒绝，拿不到单据。引擎里的业务主体仍是魔方用户编号，字段键 `studentUserId`、办理人规则 `subjectCounselor` 是第 0–10 轮的引擎契约，不是请假表。
 
 ## 可选的 TDesign 页面
 

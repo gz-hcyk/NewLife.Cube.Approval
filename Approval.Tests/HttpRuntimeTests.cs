@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Hosting;
 using Xunit;
@@ -321,6 +322,82 @@ public class HttpRuntimeTests
         Assert.Contains("days", approverView["formData"]!.GetValue<String>());
         var ownerSearch = Ok(await Get(client, "/api/Approval/Runtime/Search?field=reason&keyword=" + reason, ownerToken));
         Assert.Contains(instanceId, ownerSearch.ToJsonString());
+    }
+
+    [Fact]
+    [DisplayName("办理响应去掉隐藏字段，旁观者重放请求号得不到单据")]
+    public async Task Action_response_redacts_hidden_fields_and_replay_is_forbidden()
+    {
+        var mark = Guid.NewGuid().ToString("N")[..8];
+        var role = Role.Add("gate-http-" + mark, false, "门禁");
+        var owner = User.Add("ghttp-owner-" + mark, "pass1234", role.ID, "学生甲");
+        var approver = User.Add("ghttp-appr-" + mark, "pass1234", role.ID, "审批人");
+        var stranger = User.Add("ghttp-str-" + mark, "pass1234", role.ID, "旁观者");
+        foreach (var user in new[] { owner, approver, stranger })
+        {
+            user.Enable = true;
+            user.Update();
+        }
+
+        var form = new ApprovalFormDefinition { Code = "ghttp-" + mark, Name = "门禁表单", Enable = true };
+        form.Insert();
+        form.SaveDraft("""{"fields":[{"key":"studentUserId"},{"key":"reason","search":true},{"key":"days"}]}""");
+        form.Publish(0);
+        var process = new ApprovalProcess { Code = "ghttpp-" + mark, Name = "门禁流程", FormId = form.Id, Enable = true };
+        process.Insert();
+        process.SaveDraft(
+            "{\"nodes\":[" +
+            "{\"key\":\"s\",\"type\":\"start\",\"name\":\"开始\",\"fields\":[{\"key\":\"days\",\"access\":\"hidden\"},{\"key\":\"reason\",\"access\":\"editable\"},{\"key\":\"studentUserId\",\"access\":\"readonly\"}]}," +
+            "{\"key\":\"a\",\"type\":\"approve\",\"name\":\"审批\",\"mode\":\"any\",\"assignee\":{\"type\":\"user\",\"userIds\":[" + approver.ID + "]},\"fields\":[{\"key\":\"days\",\"access\":\"editable\"},{\"key\":\"reason\",\"access\":\"readonly\"}]}," +
+            "{\"key\":\"e\",\"type\":\"end\",\"name\":\"结束\"}]," +
+            "\"edges\":[{\"key\":\"e1\",\"from\":\"s\",\"to\":\"a\"},{\"key\":\"e2\",\"from\":\"a\",\"to\":\"e\"}]}");
+        process.Publish(0);
+
+        await using var factory = new ApprovalApiFactory(_world);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        _ = await Login(client, owner.Name, "pass1234");
+        GrantFull(role);
+        var ownerToken = await Login(client, owner.Name, "pass1234");
+        var approverToken = await Login(client, approver.Name, "pass1234");
+        var strangerToken = await Login(client, stranger.Name, "pass1234");
+        var requestId = "ghttp-start-" + mark;
+        var secret = "ghttp-secret-" + mark;
+        var started = Ok(await Send(client, HttpMethod.Post, "/api/Approval/Runtime/Start", ownerToken, new
+        {
+            processId = process.Id,
+            proxy = false,
+            data = "{\"studentUserId\":" + owner.ID + ",\"reason\":\"" + secret + "\"}",
+            requestId,
+        }));
+        var task = Pending(started).Single();
+        var stolen = await Send(client, HttpMethod.Post, "/api/Approval/Runtime/Start", strangerToken, new
+        {
+            processId = process.Id,
+            proxy = false,
+            data = "{\"studentUserId\":" + stranger.ID + ",\"reason\":\"偷看\"}",
+            requestId,
+        });
+        Assert.Equal(4031, stolen["code"]!.GetValue<Int32>());
+        Assert.DoesNotContain(secret, stolen.ToJsonString());
+
+        var agreed = Ok(await Send(client, HttpMethod.Post, "/api/Approval/Runtime/Agree", approverToken, new
+        {
+            taskId = task["id"]!.GetValue<String>(),
+            comment = "同意",
+            data = "{\"days\":4}",
+            requestId = "ghttp-ag-" + mark,
+            instanceVersion = started["version"]!.GetValue<Int32>(),
+        }));
+        Assert.Contains("days", agreed["formData"]!.GetValue<String>());
+        var replay = Ok(await Send(client, HttpMethod.Post, "/api/Approval/Runtime/Start", ownerToken, new
+        {
+            processId = process.Id,
+            proxy = false,
+            requestId,
+        }));
+        Assert.Equal(started["instanceId"]!.GetValue<String>(), replay["instanceId"]!.GetValue<String>());
+        Assert.DoesNotContain("days", replay["formData"]!.GetValue<String>());
+        Assert.Contains(secret, replay["formData"]!.GetValue<String>());
     }
 
     [Fact]
