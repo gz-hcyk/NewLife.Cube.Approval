@@ -1,18 +1,29 @@
 using System.Text.Json;
+using Approval.Data;
 using Approval.Data.Entities;
 using NewLife;
 
-namespace Approval.Data;
+namespace Approval.Leave;
 
 /// <summary>
 /// 请假业务宿主。发起审批，并在同意、驳回、撤回、重新提交后把实例状态抄回请假单。
-/// 学生只是魔方用户编号，不建学籍、班级或辅导员档案。
+/// 学生只是魔方用户编号，不建学籍、班级或辅导员档案。这是示例，不在核心包里。
 /// </summary>
 public static class LeaveHost
 {
+    private static Int32 _attached;
+
+    /// <summary>把请假单接到审批状态变化上。重复调用只有第一次生效。</summary>
+    public static void Attach()
+    {
+        if (Interlocked.Exchange(ref _attached, 1) == 1) return;
+        ApprovalHost.InstanceChanged += Sync;
+    }
+
     /// <summary>提交请假并启动已发布流程。</summary>
     public static LeaveRequest Submit(LeaveSubmit args)
     {
+        Attach();
         if (args.RequestId.IsNullOrEmpty()) throw new ApprovalException(4001, "缺少请求号");
         var studentId = args.Proxy ? args.SubjectUserId : args.OperatorUserId;
         var data = args.Data;

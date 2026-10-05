@@ -4,11 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>Approval.Data</RootNamespace>
+    <RootNamespace>Approval.Leave</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.XCode" Version="12.2.2026.901" />
+    <ProjectReference Include="..\..\NewLife.Cube.Approval\NewLife.Cube.Approval.csproj" />
   </ItemGroup>
 
 </Project>

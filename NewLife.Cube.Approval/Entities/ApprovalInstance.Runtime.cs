@@ -148,7 +148,7 @@ public partial class ApprovalInstance
             var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
             if (dup != null)
             {
-                LeaveHost.Sync(inst.Id);
+                ApprovalHost.Notify(inst.Id);
                 result = inst;
                 return;
             }
@@ -175,7 +175,7 @@ public partial class ApprovalInstance
             inst.Update();
             WriteHistory(inst, task, node, "agree", "同意", comment,
                 before, inst.Status, requestId, clientIp, op, now);
-            LeaveHost.Sync(inst.Id);
+            ApprovalHost.Notify(inst.Id);
             result = inst;
         });
         return FindById(result!.Id) ?? result;
@@ -195,7 +195,7 @@ public partial class ApprovalInstance
             var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
             if (dup != null)
             {
-                LeaveHost.Sync(inst.Id);
+                ApprovalHost.Notify(inst.Id);
                 result = inst;
                 return;
             }
@@ -224,7 +224,7 @@ public partial class ApprovalInstance
             var node = ApprovalNode.FindAllByProcessVersionId(inst.ProcessVersionId).FirstOrDefault(e => e.NodeKey == task.NodeKey);
             var note = $"已退回发起人：{inst.UserName}。{comment}";
             WriteHistory(inst, task, node, "reject", "驳回", note, before, inst.Status, requestId, clientIp, op, now);
-            LeaveHost.Sync(inst.Id);
+            ApprovalHost.Notify(inst.Id);
             result = inst;
         });
         return FindById(result!.Id) ?? result;
@@ -287,7 +287,7 @@ public partial class ApprovalInstance
             var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
             if (dup != null)
             {
-                LeaveHost.Sync(inst.Id);
+                ApprovalHost.Notify(inst.Id);
                 result = inst;
                 return;
             }
@@ -311,7 +311,7 @@ public partial class ApprovalInstance
             inst.Version++;
             inst.Update();
             WriteHistory(inst, null, null, "withdraw", "撤回", reason, before, inst.Status, requestId, clientIp, op, now);
-            LeaveHost.Sync(inst.Id);
+            ApprovalHost.Notify(inst.Id);
             result = inst;
         });
         return FindById(result!.Id) ?? result;
@@ -332,7 +332,7 @@ public partial class ApprovalInstance
             var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
             if (dup != null)
             {
-                LeaveHost.Sync(inst.Id);
+                ApprovalHost.Notify(inst.Id);
                 result = inst;
                 return;
             }
@@ -380,7 +380,7 @@ public partial class ApprovalInstance
             Enter(inst, start, nodes, transitions, now);
             inst.Update();
             WriteHistory(inst, null, null, "resubmit", "重新提交", null, before, inst.Status, requestId, clientIp, op, now);
-            LeaveHost.Sync(inst.Id);
+            ApprovalHost.Notify(inst.Id);
             result = inst;
         });
         return FindById(result!.Id) ?? result;

@@ -4,7 +4,7 @@ using NewLife;
 using XCode;
 using XCode.DataAccessLayer;
 
-namespace Approval.Data.Entities;
+namespace Approval.Leave;
 
 /// <summary>请假宿主。学生只记魔方用户编号，审批结果回写到状态。</summary>
 [Serializable]

@@ -1,6 +1,28 @@
 # 审批运行时切片实现记录
 
-> 本文件随通用审批产品迁入 [NewLife.Cube.Approval](https://github.com/gz-hcyk/NewLife.Cube.Approval) 仓库根目录。源是 [cube-webapi-skills](https://github.com/gz-hcyk/cube-webapi-skills) 分支 `cursor/approval-runtime-slice-ea37` 的 `examples/approval`。下文里的 `examples/approval` 在本仓库就是仓库根，`examples/approval/web` 就是 `web/`。怎么跑以本节之后的「怎样运行」和根目录 README 为准。
+> 本文件随通用审批产品迁入 [NewLife.Cube.Approval](https://github.com/gz-hcyk/NewLife.Cube.Approval) 仓库根目录。源是 [cube-webapi-skills](https://github.com/gz-hcyk/cube-webapi-skills) 分支 `cursor/approval-runtime-slice-ea37` 的 `examples/approval`。下文里的 `examples/approval` 指当时的示例根；现在的布局见下一节。怎么跑以根目录 README 为准。
+
+## 包与示例拆分
+
+日期：2026-10-05。第 0–10 轮行为不改。变的是谁可以引用。
+
+| 工程 | 包 | 放什么 |
+|------|----|--------|
+| `NewLife.Cube.Approval` | `NewLife.Cube.Approval` 1.0.0 | 实体、发布、运行时、`ApprovalHost.InstanceChanged` |
+| `NewLife.Cube.Approval.Web` | `NewLife.Cube.Approval.Web` 1.0.0 | `Approval` / `ApprovalAdmin` 区域、办理和设计控制器、`AddApproval` / `UseApproval` |
+| `samples/Approval.Leave` | 不打包 | `LeaveRequest`、`LeaveHost`、`LeaveSample` |
+| `samples/Approval.Host` | 不打包 | 只引用 Web 包，注册一行，并播种请假 |
+| `samples/web` | 不打包 | 可选 TDesign。办理台和两个设计页在 `src/pages/approval` |
+
+核心程序集不再引用 `LeaveHost`。同意、驳回、撤回、重新提交（含同一请求号重放）改为 `ApprovalHost.Notify`。请假示例在 `LeaveHost.Attach` 里订阅，把状态抄回 `LeaveRequest`。没有订阅时引擎照常跑。
+
+`studentUserId` 和办理人规则 `subjectCounselor` 留在引擎里。它们是业务主体契约，不是请假表。请假表只在示例程序集。
+
+连接名仍是 `Approval`。宿主把这条连接串指到自己的库文件，审批表就和宿主落在同一个数据库；用户、角色、部门、权限、审计继续走魔方的 `Membership`。
+
+绿色项目只加 `PackageReference`，调用 `AddApproval()` 和 `UseApproval()`。不复制控制器、实体或示例里的请假代码。TDesign 页面不在 nupkg 里，要办理台时再拷 `samples/web/src/pages/approval`。
+
+打包：`dotnet pack Approval.sln -c Release -o artifacts`。测试：`dotnet test`。示例宿主：`dotnet run --project samples/Approval.Host`。
 
 日期：2026-10-05。范围是 `examples/approval`。第 3 轮增加 `examples/approval/web` 的 TDesign 管理端。不重建魔方的用户、角色、部门、菜单和登录。
 
@@ -77,7 +99,7 @@
 - 字段值索引表是 `ApprovalFieldValue`（实例、字段键、字段值，实例加字段唯一）。第一次访问会在审批事务外同步建表：这张表的第一次操作是查询，而进程里其它实体已经做过模型检查时，XCode 不会再为后加载的实体建表。发起、同意、驳回、重新提交保存表单后，按该版本 `SearchableKeys` 重建。字符串按原文写入，不用带引号的 JSON。`FindMatches` 和 `GET /api/Approval/Runtime/Search?field=reason&keyword=` 做包含匹配，关键字为空返回 4001。请假样例的可检索字段仍是 `reason`，「回家」能命中「回家一天」。
 - 令牌表仍然不做。并行和排他的正确性仍靠任务状态和历史动作 `choose`。
 
-HTTP（`WebApplicationFactory` 启动 `Approval.Web`，关闭 Cookie，只带 Bearer）：
+HTTP（`WebApplicationFactory` 启动示例宿主，关闭 Cookie，只带 Bearer）：
 
 - `POST /Auth/Login` 可用测试用户登录。
 - 同一条已发布请假流程：本人发起学生字段被改掉返回 4221；本人发起成功后待办人是表单里的辅导员；辅导员驳回，历史含退回发起人。
@@ -127,7 +149,7 @@ HTTP（`WebApplicationFactory` 启动 `Approval.Web`，关闭 Cookie，只带 Be
 ```bash
 dotnet build
 dotnet test
-dotnet run --project Approval.Web
+dotnet run --project samples/Approval.Host
 ```
 
 开发环境监听 `http://127.0.0.1:5052`，Swagger 在 `/Swagger`。`Config/Cube.config` 里的 `JwtSecret` 只给示例，不能用于生产。魔方初始化后的管理员仍是框架种子的 `admin` / `admin`。进程启动时会把审批菜单上声明的全部权限位授给该管理员的角色。
@@ -135,12 +157,12 @@ dotnet run --project Approval.Web
 管理端和 API 一起开：
 
 ```bash
-cd web
+cd samples/web
 npm install --no-audit --no-fund
 npm run dev
 ```
 
-前端开发服务器是 `http://127.0.0.1:3002`。`/api`、`/Auth` 等请求代理到 `http://127.0.0.1:5052`（不要写成 localhost）。迁出时的 Node 是 22.14，脚手架里的 `lint-staged` 要求 22.22.1 以上；本仓库 `web/.npmrc` 已把 `engine-strict` 设为 false，因此 `npm install` 不必再加 `--engine-strict=false`。生产构建是 `npm run build`。
+前端开发服务器是 `http://127.0.0.1:3002`。`/api`、`/Auth` 等请求代理到 `http://127.0.0.1:5052`（不要写成 localhost）。迁出时的 Node 是 22.14，脚手架里的 `lint-staged` 要求 22.22.1 以上；本仓库 `samples/web/.npmrc` 已把 `engine-strict` 设为 false，因此 `npm install` 不必再加 `--engine-strict=false`。生产构建是 `npm run build`。
 
 登录后侧栏来自 `GetMenuTree`：审批办理（待办、抄送、已办、草稿、检索、同意、驳回、转办、加签、已阅、撤回、重新提交、本人发起或代发起）、表单定义、流程定义。流程定义可以增删节点、调整顺序、改连线和排他条件、设置或签/会签/依次，以及全部办理人规则和字段权限。本人发起时学生锁定为当前用户；代发起必须选择学生；辅导员按该生选择，不会自动填成代发人。流程里有发起人自选节点时，发起对话框按节点选择办理人。检索页按事由包含匹配。发起对话框不展示隐藏字段，只读字段不可改。同意和驳回只提交当前节点可编辑的字段。撤回后到草稿页打开单据，可以重新提交；天数在开始节点是隐藏的，审批节点才可填。
 
@@ -229,7 +251,7 @@ npm run dev
 
 流程设计页和办理详情都加了只读流程图。编辑仍用原来的节点表、属性区和连线表，图上不能拖拽改线。
 
-没有引入 vue-flow、mermaid 或其他图库。现有前端依赖里没有图组件，发布门禁是 `vue-tsc` 加 Vite 8。请假和网关样例都是短有向图，只读展示用最长路径分层的 SVG 就够，避免再钉一套和 Vite 大版本绑在一起的依赖。组件是 `web/src/pages/approval/FlowChart.vue`，分层在 `flowChart.ts`。
+没有引入 vue-flow、mermaid 或其他图库。现有前端依赖里没有图组件，发布门禁是 `vue-tsc` 加 Vite 8。请假和网关样例都是短有向图，只读展示用最长路径分层的 SVG 就够，避免再钉一套和 Vite 大版本绑在一起的依赖。组件是 `samples/web/src/pages/approval/FlowChart.vue`，分层在 `flowChart.ts`。
 
 设计页读的仍是 `GET /ApprovalAdmin/Process/Design` 的 `definition`。办理详情原来的 `View` 不带流程 JSON，本轮在原字段之外增加 `definition`（该实例 `ProcessVersionId` 上的定义）以及历史的 `nodeKey`、`nodeName`。原有字段没有改名或删除。参与人不能调设计接口，所以查看接口需要这份定义才能画同一张图。
 

@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Approval.Host</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,7 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Approval.Data\Approval.Data.csproj" />
+    <ProjectReference Include="..\..\NewLife.Cube.Approval.Web\NewLife.Cube.Approval.Web.csproj" />
+    <ProjectReference Include="..\Approval.Leave\Approval.Leave.csproj" />
   </ItemGroup>
 
   <ItemGroup>

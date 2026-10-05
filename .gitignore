@@ -10,8 +10,8 @@
 *.userosscache
 *.sln.docstates
 *.env
-# 审批前端的模板环境文件需要入库。本地覆盖仍用 web/.env.local。
-!web/.env
+# 审批前端的模板环境文件需要入库。本地覆盖仍用 samples/web/.env.local。
+!samples/web/.env
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
