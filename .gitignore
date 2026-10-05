@@ -426,3 +426,9 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# 审批示例运行时库（SQLite）
+Data/
+*.db
+*.db-shm
+*.db-wal

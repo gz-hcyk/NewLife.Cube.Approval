@@ -1,0 +1,172 @@
+<template>
+  <div class="flow-chart" data-flow-chart>
+    <div v-if="zoomable && placed.nodes.length" class="zoom-bar">
+      <button type="button" data-zoom="in" @click="zoomBy(0.2)">放大</button>
+      <button type="button" data-zoom="out" @click="zoomBy(-0.2)">缩小</button>
+      <button type="button" data-zoom="reset" @click="resetZoom">还原</button>
+      <span class="zoom-label">{{ zoomText }}</span>
+    </div>
+    <div
+      v-if="placed.nodes.length"
+      ref="canvasRef"
+      class="canvas"
+      :class="{ pannable: zoomable }"
+      :style="zoomable ? { maxHeight: canvasMaxHeight || '480px' } : undefined"
+      @pointerdown="onPanDown"
+      @pointermove="onPanMove"
+      @pointerup="onPanUp"
+      @pointercancel="onPanUp"
+    >
+      <svg
+        :viewBox="`0 0 ${placed.width} ${placed.height}`"
+        :width="placed.width * scale"
+        :height="placed.height * scale"
+        role="img"
+        aria-label="流程图"
+      >
+        <defs>
+          <marker :id="markerId" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#9aa0a6" />
+          </marker>
+        </defs>
+        <g v-for="edge in placed.edges" :key="edge.key">
+          <path :d="edge.d" class="edge-hit" fill="none" stroke="transparent" stroke-width="12" @click.stop="emit('selectEdge', edge.key)" />
+          <path :d="edge.d" fill="none" stroke="#c5c8ce" stroke-width="1.5" :marker-end="`url(#${markerId})`" :class="{ 'edge-selected': edge.key === selectedEdge }" />
+          <g v-if="edge.label">
+            <rect
+              :x="edge.lx - labelWidth(edge.label) / 2"
+              :y="edge.ly - 11"
+              :width="labelWidth(edge.label)"
+              height="16"
+              rx="3"
+              fill="#fff"
+            />
+            <text :x="edge.lx" :y="edge.ly" text-anchor="middle" class="edge-label">{{ edge.label }}</text>
+          </g>
+        </g>
+        <g
+          v-for="node in placed.nodes"
+          :key="node.key"
+          class="node"
+          :data-node-key="node.key"
+          :data-node-type="node.type"
+          :data-node-state="node.state"
+          @click="onSelect(node.key)"
+        >
+          <title>{{ node.name }}</title>
+          <rect
+            :x="node.x"
+            :y="node.y"
+            :width="boxW"
+            :height="boxH"
+            :rx="pill(node.type) ? 26 : 8"
+            :class="['box', 'clickable', `type-${node.type}`, node.state, { selected: node.key === selected }]"
+          />
+          <text :x="node.x + boxW / 2" :y="node.y + 20" text-anchor="middle" :class="['type', node.state]">{{ typeLabel(node.type) }}</text>
+          <text :x="node.x + boxW / 2" :y="node.y + 38" text-anchor="middle" :class="['name', node.state]">{{ shortName(node.name) }}</text>
+        </g>
+      </svg>
+    </div>
+    <p v-else class="empty">没有可绘制的节点</p>
+    <div v-if="legend" class="legend">
+      <span class="swatch current">当前</span>
+      <span class="swatch done">已完成</span>
+      <span class="swatch wait">未到</span>
+      <span class="swatch rejected">已驳回</span>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, useId } from 'vue';
+import { BOX_H, BOX_W, layoutGraph, shortName, typeLabel, type ChartEdge, type ChartNode, type NodeMark } from './flowChart';
+
+const props = defineProps<{
+  nodes: ChartNode[];
+  edges: ChartEdge[];
+  states?: Record<string, NodeMark>;
+  selected?: string;
+  selectedEdge?: string;
+  legend?: boolean;
+  zoomable?: boolean;
+  canvasMaxHeight?: string;
+}>();
+
+const emit = defineEmits<{ select: [key: string]; selectEdge: [key: string] }>();
+
+const boxW = BOX_W;
+const boxH = BOX_H;
+const markerId = `flow-arrow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+const placed = computed(() => layoutGraph(props.nodes || [], props.edges || [], props.states));
+const scale = ref(1);
+const zoomText = computed(() => `${Math.round(scale.value * 100)}%`);
+const canvasRef = ref<HTMLElement | null>(null);
+let panning = false;
+
+function zoomBy(delta: number) {
+  scale.value = Math.min(2.5, Math.max(0.4, Math.round((scale.value + delta) * 10) / 10));
+}
+function resetZoom() {
+  scale.value = 1;
+}
+function onPanDown(event: PointerEvent) {
+  if (!props.zoomable) return;
+  const target = event.target as Element | null;
+  if (target?.closest('.node, .edge-hit')) return;
+  panning = true;
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+}
+function onPanMove(event: PointerEvent) {
+  if (!panning || !canvasRef.value) return;
+  canvasRef.value.scrollLeft -= event.movementX;
+  canvasRef.value.scrollTop -= event.movementY;
+}
+function onPanUp() {
+  panning = false;
+}
+
+function pill(type: string) {
+  return type === 'start' || type === 'end';
+}
+function labelWidth(label: string) {
+  return Math.max(28, label.length * 12 + 10);
+}
+function onSelect(key: string) {
+  emit('select', key);
+}
+</script>
+
+<style scoped>
+.flow-chart { margin: 8px 0 4px; }
+.zoom-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.zoom-bar button { border: 1px solid var(--td-component-border); background: #fff; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+.zoom-label { color: var(--td-text-color-secondary); font-size: 12px; }
+.canvas { overflow: auto; padding-bottom: 4px; }
+.canvas.pannable { cursor: grab; touch-action: none; }
+.edge-hit { cursor: pointer; }
+.edge-selected { stroke: #0052d9; stroke-width: 2.5; }
+.empty { margin: 8px 0; color: var(--td-text-color-secondary); }
+.edge-label { font-size: 11px; fill: #5e6670; }
+.type { font-size: 11px; fill: #5e6670; }
+.name { font-size: 13px; fill: #1f2329; font-weight: 600; }
+.type.current, .name.current { fill: #fff; }
+.box { stroke-width: 1.5; }
+.box.clickable { cursor: pointer; }
+.box.type-start { fill: #e8f8f2; stroke: #2ba471; }
+.box.type-approve { fill: #f2f3ff; stroke: #0052d9; }
+.box.type-cc { fill: #f6f0ff; stroke: #7b61ff; }
+.box.type-exclusive { fill: #fff1e9; stroke: #e37318; }
+.box.type-parallel { fill: #e8f7ff; stroke: #0594fa; }
+.box.type-end { fill: #f3f3f3; stroke: #8b8b8b; }
+.box.done { fill: #e8f8f2; stroke: #2ba471; }
+.box.current { fill: #0052d9; stroke: #0034b5; }
+.box.wait { fill: #fafafa; stroke: #dcdcdc; }
+.box.rejected { fill: #fff0ed; stroke: #d54941; }
+.box.selected { stroke: #0034b5; stroke-width: 3; }
+.legend { display: flex; gap: 12px; margin-top: 8px; color: var(--td-text-color-secondary); font-size: 12px; }
+.swatch::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 2px; vertical-align: -1px; }
+.swatch.current::before { background: #0052d9; }
+.swatch.done::before { background: #2ba471; }
+.swatch.wait::before { background: #dcdcdc; }
+.swatch.rejected::before { background: #d54941; }
+</style>
