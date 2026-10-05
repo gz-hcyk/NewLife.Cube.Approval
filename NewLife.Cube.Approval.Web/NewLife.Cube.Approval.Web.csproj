@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>NewLife.Cube.Approval</RootNamespace>
+    <AssemblyName>NewLife.Cube.Approval.Web</AssemblyName>
+    <PackageId>NewLife.Cube.Approval.Web</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>NewLife.Cube WebApi 审批扩展。注册审批菜单、办理接口和设计接口。</Description>
+    <PackageTags>NewLife;Cube;WebApi;Approval</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NewLife.Cube" Version="6.15.2026.901" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NewLife.Cube.Approval\NewLife.Cube.Approval.csproj">
+      <PrivateAssets>none</PrivateAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

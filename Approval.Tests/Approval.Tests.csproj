@@ -15,14 +15,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Approval.Data\Approval.Data.csproj" />
-    <ProjectReference Include="..\Approval.Web\Approval.Web.csproj" />
+    <ProjectReference Include="..\NewLife.Cube.Approval\NewLife.Cube.Approval.csproj" />
+    <ProjectReference Include="..\NewLife.Cube.Approval.Web\NewLife.Cube.Approval.Web.csproj" />
+    <ProjectReference Include="..\samples\Approval.Leave\Approval.Leave.csproj" />
+    <ProjectReference Include="..\samples\Approval.Host\Approval.Host.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\Approval.Web\Config\**\*" CopyToOutputDirectory="PreserveNewest" Link="Config\%(Filename)%(Extension)" />
-    <None Include="..\Approval.Web\appsettings.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\Approval.Web\appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\samples\Approval.Host\Config\**\*" CopyToOutputDirectory="PreserveNewest" Link="Config\%(Filename)%(Extension)" />
+    <None Include="..\samples\Approval.Host\appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\samples\Approval.Host\appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

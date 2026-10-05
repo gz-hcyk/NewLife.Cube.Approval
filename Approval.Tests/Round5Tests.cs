@@ -1,5 +1,6 @@
 using Approval.Data;
 using Approval.Data.Entities;
+using Approval.Leave;
 using Xunit;
 using XCode.Membership;
 

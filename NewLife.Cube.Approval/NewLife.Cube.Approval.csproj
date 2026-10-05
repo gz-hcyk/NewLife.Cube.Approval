@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Approval.Data</RootNamespace>
+    <AssemblyName>NewLife.Cube.Approval</AssemblyName>
+    <PackageId>NewLife.Cube.Approval</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>NewLife.Cube 通用审批引擎。表单与流程发布、发起、待办办理。不含具体业务单据。</Description>
+    <PackageTags>NewLife;Cube;XCode;Approval</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NewLife.XCode" Version="12.2.2026.901" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
