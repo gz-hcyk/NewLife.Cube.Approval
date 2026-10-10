@@ -17,7 +17,10 @@ public partial class ApprovalInstance
         var existed = ApprovalHistory.FindAllByRequestId(args.RequestId);
         if (existed.Count > 0)
         {
-            var old = FindById(existed[0].InstanceId);
+            // 只重放给当初写下这条历史的人。网关请求号 choose-轮次-节点可以猜到，不能据此把别人的单据还出去。
+            var mine = existed.FirstOrDefault(row => row.OperatorId == args.OperatorUserId);
+            if (mine == null) throw new ApprovalException(4031, "无权重放该请求");
+            var old = FindById(mine.InstanceId);
             if (old != null) return old;
         }
 
@@ -145,11 +148,9 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
-            var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
-            if (dup != null)
+            if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayAgree)
             {
-                ApprovalHost.Notify(inst.Id);
-                result = inst;
+                result = replayAgree;
                 return;
             }
 
@@ -192,11 +193,9 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
-            var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
-            if (dup != null)
+            if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayReject)
             {
-                ApprovalHost.Notify(inst.Id);
-                result = inst;
+                result = replayReject;
                 return;
             }
 
@@ -241,10 +240,9 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
-            var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
-            if (dup != null)
+            if (OwnedReplay(inst, requestId, operatorUserId, false) is { } replayTransfer)
             {
-                result = inst;
+                result = replayTransfer;
                 return;
             }
 
@@ -284,11 +282,9 @@ public partial class ApprovalInstance
         Run(() =>
         {
             var inst = FindById(instanceId) ?? throw new ApprovalException(4041, "审批单不存在");
-            var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
-            if (dup != null)
+            if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayWithdraw)
             {
-                ApprovalHost.Notify(inst.Id);
-                result = inst;
+                result = replayWithdraw;
                 return;
             }
 
@@ -329,11 +325,9 @@ public partial class ApprovalInstance
         Run(() =>
         {
             var inst = FindById(instanceId) ?? throw new ApprovalException(4041, "审批单不存在");
-            var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
-            if (dup != null)
+            if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayResubmit)
             {
-                ApprovalHost.Notify(inst.Id);
-                result = inst;
+                result = replayResubmit;
                 return;
             }
 
@@ -397,10 +391,9 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
-            var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
-            if (dup != null)
+            if (OwnedReplay(inst, requestId, operatorUserId, false) is { } replayAddSign)
             {
-                result = inst;
+                result = replayAddSign;
                 return;
             }
 
@@ -443,10 +436,9 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
-            var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
-            if (dup != null)
+            if (OwnedReplay(inst, requestId, operatorUserId, false) is { } replayRead)
             {
-                result = inst;
+                result = replayRead;
                 return;
             }
 
@@ -480,6 +472,23 @@ public partial class ApprovalInstance
         var exp = new WhereExpression();
         exp = exp.ApplyScope<ApprovalInstance>(ctx);
         return FindAll(exp);
+    }
+
+    /// <summary>
+    /// 同一请求号只重放给当初的操作者。不是这个人时拒绝，并且不把单据交出去。
+    /// </summary>
+    /// <param name="inst">已经按任务或实例载入的单据。</param>
+    /// <param name="requestId">客户端请求号。</param>
+    /// <param name="operatorUserId">当前操作者。</param>
+    /// <param name="notify">为 true 时，重放也通知业务宿主。</param>
+    /// <returns>可以重放时返回原单据；这个请求号还没用过时返回 null。</returns>
+    private static ApprovalInstance? OwnedReplay(ApprovalInstance inst, String requestId, Int32 operatorUserId, Boolean notify)
+    {
+        var dup = ApprovalHistory.FindByInstanceIdAndRequestId(inst.Id, requestId);
+        if (dup == null) return null;
+        if (dup.OperatorId != operatorUserId) throw new ApprovalException(4031, "无权重放该请求");
+        if (notify) ApprovalHost.Notify(inst.Id);
+        return inst;
     }
 
     private static void EnsureHandle(ApprovalTask task, ApprovalInstance inst, Int32 operatorUserId, Int32 instanceVersion)

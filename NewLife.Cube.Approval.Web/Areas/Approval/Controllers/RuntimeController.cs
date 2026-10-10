@@ -470,8 +470,13 @@ public class RuntimeController : ControllerBaseX
         return XCode.Membership.User.FindByID(id) ?? throw new ApprovalException(401, "没有登录或登录超时！");
     }
 
-    private static Object Describe(ApprovalInstance inst) =>
-        Describe(inst, ApprovalFormData.FindById(inst.Id)?.Data);
+    private Object Describe(ApprovalInstance inst)
+    {
+        var user = Current();
+        var monitorIds = MonitorIds(user);
+        var raw = ApprovalFormData.FindById(inst.Id)?.Data;
+        return Describe(inst, ApprovalAccess.RedactForm(user, inst, raw, monitorIds));
+    }
 
     private static Object Describe(ApprovalInstance inst, String? formData)
     {
