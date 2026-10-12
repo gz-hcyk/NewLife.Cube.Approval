@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using NewLife;
 using XCode;
 using XCode.DataAccessLayer;
+using XCode.Membership;
 using Migration = XCode.DataAccessLayer.Migration;
 
 namespace Approval.Data.Entities;
@@ -14,9 +15,14 @@ namespace Approval.Data.Entities;
 [Description("字段值索引")]
 [BindIndex("IU_ApprovalFieldValue_InstanceId_FieldKey", true, "InstanceId,FieldKey")]
 [BindIndex("IX_ApprovalFieldValue_FieldKey", false, "FieldKey")]
+[BindIndex("IX_ApprovalFieldValue_TenantId", false, "TenantId")]
 [BindTable("ApprovalFieldValue", Description = "可检索字段值。按 SearchableKeys 为每个实例维护", ConnName = "Approval", DbType = DatabaseType.None)]
-public class ApprovalFieldValue : Entity<ApprovalFieldValue>
+public class ApprovalFieldValue : Entity<ApprovalFieldValue>, ITenantScope
 {
+    static ApprovalFieldValue()
+    {
+        Meta.Interceptors.Add<TenantInterceptor>();
+    }
     private static Int32 _tableReady;
 
     /// <summary>查询会先于插入。在审批事务外同步建表，避免别的实体做过模型检查后这张表还不存在，也避免建表语句被回滚。</summary>
@@ -34,6 +40,12 @@ public class ApprovalFieldValue : Entity<ApprovalFieldValue>
     [DataObjectField(true, true, false, 0)]
     [BindColumn("Id", "编号", "")]
     public Int32 Id { get => _Id; set { if (OnPropertyChanging(nameof(Id), value)) { _Id = value; OnPropertyChanged(nameof(Id)); } } }
+    private Int32 _TenantId;
+    /// <summary>租户</summary>
+    [DisplayName("租户")]
+    [DataObjectField(false, false, false, 0)]
+    [BindColumn("TenantId", "租户", "")]
+    public Int32 TenantId { get => _TenantId; set { if (OnPropertyChanging(nameof(TenantId), value)) { _TenantId = value; OnPropertyChanged(nameof(TenantId)); } } }
 
     private Int64 _InstanceId;
     /// <summary>审批实例</summary>
@@ -62,6 +74,7 @@ public class ApprovalFieldValue : Entity<ApprovalFieldValue>
         get => name switch
         {
             "Id" => _Id,
+            "TenantId" => _TenantId,
             "InstanceId" => _InstanceId,
             "FieldKey" => _FieldKey,
             "FieldValue" => _FieldValue,
@@ -72,6 +85,7 @@ public class ApprovalFieldValue : Entity<ApprovalFieldValue>
             switch (name)
             {
                 case "Id": _Id = value.ToInt(); break;
+                case "TenantId": _TenantId = value.ToInt(); break;
                 case "InstanceId": _InstanceId = value.ToLong(); break;
                 case "FieldKey": _FieldKey = Convert.ToString(value) ?? ""; break;
                 case "FieldValue": _FieldValue = Convert.ToString(value); break;

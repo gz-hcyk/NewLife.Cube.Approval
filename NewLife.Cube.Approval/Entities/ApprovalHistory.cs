@@ -9,6 +9,7 @@ using NewLife.Data;
 using XCode;
 using XCode.Cache;
 using XCode.Configuration;
+using XCode.Membership;
 using XCode.DataAccessLayer;
 
 namespace Approval.Data.Entities;
@@ -20,8 +21,9 @@ namespace Approval.Data.Entities;
 [BindIndex("IX_ApprovalHistory_InstanceId_Id", false, "InstanceId,Id")]
 [BindIndex("IU_ApprovalHistory_InstanceId_RequestId", true, "InstanceId,RequestId")]
 [BindIndex("IX_ApprovalHistory_RequestId", false, "RequestId")]
+[BindIndex("IX_ApprovalHistory_TenantId", false, "TenantId")]
 [BindTable("ApprovalHistory", Description = "审批历史。只追加", ConnName = "Approval", DbType = DatabaseType.None)]
-public partial class ApprovalHistory
+public partial class ApprovalHistory : ITenantScope
 {
     #region 属性
     private Int64 _Id;
@@ -31,6 +33,13 @@ public partial class ApprovalHistory
     [DataObjectField(true, false, false, 0)]
     [BindColumn("Id", "编号", "", DataScale = "time")]
     public Int64 Id { get => _Id; set { if (OnPropertyChanging("Id", value)) { _Id = value; OnPropertyChanged("Id"); } } }
+    private Int32 _TenantId;
+    /// <summary>租户</summary>
+    [DisplayName("租户")]
+    [Description("租户")]
+    [DataObjectField(false, false, false, 0)]
+    [BindColumn("TenantId", "租户", "")]
+    public Int32 TenantId { get => _TenantId; set { if (OnPropertyChanging("TenantId", value)) { _TenantId = value; OnPropertyChanged("TenantId"); } } }
 
     private Int64 _InstanceId;
     /// <summary>实例</summary>
@@ -170,6 +179,7 @@ public partial class ApprovalHistory
         get => name switch
         {
             "Id" => _Id,
+            "TenantId" => _TenantId,
             "InstanceId" => _InstanceId,
             "Round" => _Round,
             "TaskId" => _TaskId,
@@ -193,6 +203,7 @@ public partial class ApprovalHistory
             switch (name)
             {
                 case "Id": _Id = value.ToLong(); break;
+                case "TenantId": _TenantId = value.ToInt(); break;
                 case "InstanceId": _InstanceId = value.ToLong(); break;
                 case "Round": _Round = value.ToInt(); break;
                 case "TaskId": _TaskId = value.ToLong(); break;
@@ -303,6 +314,9 @@ public partial class ApprovalHistory
         /// <summary>编号</summary>
         public static readonly Field Id = FindByName("Id");
 
+        /// <summary>租户</summary>
+        public static readonly Field TenantId = FindByName("TenantId");
+
         /// <summary>实例</summary>
         public static readonly Field InstanceId = FindByName("InstanceId");
 
@@ -359,6 +373,9 @@ public partial class ApprovalHistory
     {
         /// <summary>编号</summary>
         public const String Id = "Id";
+
+        /// <summary>租户</summary>
+        public const String TenantId = "TenantId";
 
         /// <summary>实例</summary>
         public const String InstanceId = "InstanceId";

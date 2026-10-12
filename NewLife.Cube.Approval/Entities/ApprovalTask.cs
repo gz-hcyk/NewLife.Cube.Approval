@@ -9,6 +9,7 @@ using NewLife.Data;
 using XCode;
 using XCode.Cache;
 using XCode.Configuration;
+using XCode.Membership;
 using XCode.DataAccessLayer;
 
 namespace Approval.Data.Entities;
@@ -20,8 +21,9 @@ namespace Approval.Data.Entities;
 [BindIndex("IX_ApprovalTask_AssigneeId_Kind_Status_ReceiveTime", false, "AssigneeId,Kind,Status,ReceiveTime")]
 [BindIndex("IX_ApprovalTask_InstanceId_Round_NodeKey_Status", false, "InstanceId,Round,NodeKey,Status")]
 [BindIndex("IX_ApprovalTask_ProcessId_Status", false, "ProcessId,Status")]
+[BindIndex("IX_ApprovalTask_TenantId", false, "TenantId")]
 [BindTable("ApprovalTask", Description = "审批任务。办理人在到达节点时解析并固定", ConnName = "Approval", DbType = DatabaseType.None)]
-public partial class ApprovalTask
+public partial class ApprovalTask : ITenantScope
 {
     #region 属性
     private Int64 _Id;
@@ -31,6 +33,13 @@ public partial class ApprovalTask
     [DataObjectField(true, false, false, 0)]
     [BindColumn("Id", "编号", "", DataScale = "time")]
     public Int64 Id { get => _Id; set { if (OnPropertyChanging("Id", value)) { _Id = value; OnPropertyChanged("Id"); } } }
+    private Int32 _TenantId;
+    /// <summary>租户</summary>
+    [DisplayName("租户")]
+    [Description("租户")]
+    [DataObjectField(false, false, false, 0)]
+    [BindColumn("TenantId", "租户", "")]
+    public Int32 TenantId { get => _TenantId; set { if (OnPropertyChanging("TenantId", value)) { _TenantId = value; OnPropertyChanged("TenantId"); } } }
 
     private Int64 _InstanceId;
     /// <summary>实例</summary>
@@ -202,6 +211,7 @@ public partial class ApprovalTask
         get => name switch
         {
             "Id" => _Id,
+            "TenantId" => _TenantId,
             "InstanceId" => _InstanceId,
             "Round" => _Round,
             "ProcessId" => _ProcessId,
@@ -229,6 +239,7 @@ public partial class ApprovalTask
             switch (name)
             {
                 case "Id": _Id = value.ToLong(); break;
+                case "TenantId": _TenantId = value.ToInt(); break;
                 case "InstanceId": _InstanceId = value.ToLong(); break;
                 case "Round": _Round = value.ToInt(); break;
                 case "ProcessId": _ProcessId = value.ToInt(); break;
@@ -338,6 +349,9 @@ public partial class ApprovalTask
         /// <summary>编号</summary>
         public static readonly Field Id = FindByName("Id");
 
+        /// <summary>租户</summary>
+        public static readonly Field TenantId = FindByName("TenantId");
+
         /// <summary>实例</summary>
         public static readonly Field InstanceId = FindByName("InstanceId");
 
@@ -406,6 +420,9 @@ public partial class ApprovalTask
     {
         /// <summary>编号</summary>
         public const String Id = "Id";
+
+        /// <summary>租户</summary>
+        public const String TenantId = "TenantId";
 
         /// <summary>实例</summary>
         public const String InstanceId = "InstanceId";

@@ -10,7 +10,7 @@ namespace Approval.Web.Areas.Approval.Controllers;
 
 /// <summary>审批运行。发起、同意、驳回都调用实例上的业务方法。</summary>
 [DisplayName("审批办理")]
-[Menu(10, true, Icon = "task")]
+[Menu(10, true, Icon = "task", Mode = MenuModes.Admin | MenuModes.Tenant)]
 [ApprovalArea]
 public class RuntimeController : ControllerBaseX
 {

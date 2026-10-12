@@ -26,6 +26,7 @@ public partial class ApprovalInstance
 
         var process = ApprovalProcess.FindById(args.ProcessId)
             ?? throw new ApprovalException(4041, "流程不存在");
+        EnsureTenant(process);
         if (!process.Enable || process.PublishedVersionId <= 0)
             throw new ApprovalException(4091, "流程未启用或尚未发布");
         var version = ApprovalProcessVersion.FindById(process.PublishedVersionId)
@@ -148,6 +149,8 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
+            EnsureTenant(task);
+            EnsureTenant(inst);
             if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayAgree)
             {
                 result = replayAgree;
@@ -193,6 +196,8 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
+            EnsureTenant(task);
+            EnsureTenant(inst);
             if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayReject)
             {
                 result = replayReject;
@@ -240,6 +245,8 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
+            EnsureTenant(task);
+            EnsureTenant(inst);
             if (OwnedReplay(inst, requestId, operatorUserId, false) is { } replayTransfer)
             {
                 result = replayTransfer;
@@ -282,6 +289,7 @@ public partial class ApprovalInstance
         Run(() =>
         {
             var inst = FindById(instanceId) ?? throw new ApprovalException(4041, "审批单不存在");
+            EnsureTenant(inst);
             if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayWithdraw)
             {
                 result = replayWithdraw;
@@ -325,6 +333,7 @@ public partial class ApprovalInstance
         Run(() =>
         {
             var inst = FindById(instanceId) ?? throw new ApprovalException(4041, "审批单不存在");
+            EnsureTenant(inst);
             if (OwnedReplay(inst, requestId, operatorUserId, true) is { } replayResubmit)
             {
                 result = replayResubmit;
@@ -391,6 +400,8 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
+            EnsureTenant(task);
+            EnsureTenant(inst);
             if (OwnedReplay(inst, requestId, operatorUserId, false) is { } replayAddSign)
             {
                 result = replayAddSign;
@@ -436,6 +447,8 @@ public partial class ApprovalInstance
         {
             var task = ApprovalTask.FindById(taskId) ?? throw new ApprovalException(4041, "任务不存在");
             var inst = FindById(task.InstanceId) ?? throw new ApprovalException(4041, "审批单不存在");
+            EnsureTenant(task);
+            EnsureTenant(inst);
             if (OwnedReplay(inst, requestId, operatorUserId, false) is { } replayRead)
             {
                 result = replayRead;
@@ -489,6 +502,19 @@ public partial class ApprovalInstance
         if (dup.OperatorId != operatorUserId) throw new ApprovalException(4031, "无权重放该请求");
         if (notify) ApprovalHost.Notify(inst.Id);
         return inst;
+    }
+
+    /// <summary>
+    /// 租户模式下校验数据归属当前租户。管理后台（无租户上下文）与影子兼容期不校验。
+    /// 实体查询已由 <see cref="TenantInterceptor"/> 自动附加租户条件，这里是纵深防御，
+    /// 保证即使查询过滤被绕过，跨租户的办理请求也进不到业务流程里。
+    /// </summary>
+    private static void EnsureTenant(ITenantScope entity)
+    {
+        var tenantId = TenantContext.CurrentId;
+        if (tenantId <= 0) return;
+        if (entity.TenantId != tenantId)
+            throw new ApprovalException(4031, "无权操作其它租户的数据");
     }
 
     private static void EnsureHandle(ApprovalTask task, ApprovalInstance inst, Int32 operatorUserId, Int32 instanceVersion)

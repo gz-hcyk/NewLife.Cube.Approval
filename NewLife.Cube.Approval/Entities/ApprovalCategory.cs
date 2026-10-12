@@ -11,15 +11,17 @@ namespace Approval.Data.Entities;
 [Serializable]
 [DataObject]
 [Description("审批分类")]
-[BindIndex("IU_ApprovalCategory_Code", true, "Code")]
+[BindIndex("IU_ApprovalCategory_TenantId_Code", true, "TenantId,Code")]
+[BindIndex("IX_ApprovalCategory_TenantId", false, "TenantId")]
 [BindTable("ApprovalCategory", Description = "审批分类。表单和流程挂在分类下", ConnName = "Approval", DbType = DatabaseType.None)]
-public class ApprovalCategory : Entity<ApprovalCategory>
+public class ApprovalCategory : Entity<ApprovalCategory>, ITenantScope
 {
     static ApprovalCategory()
     {
         Meta.Interceptors.Add(new UserInterceptor { AllowEmpty = true });
         Meta.Interceptors.Add<TimeInterceptor>();
         Meta.Interceptors.Add(new IPInterceptor { AllowEmpty = true });
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     private Int32 _Id;
@@ -28,6 +30,12 @@ public class ApprovalCategory : Entity<ApprovalCategory>
     [DataObjectField(true, true, false, 0)]
     [BindColumn("Id", "编号", "")]
     public Int32 Id { get => _Id; set { if (OnPropertyChanging(nameof(Id), value)) { _Id = value; OnPropertyChanged(nameof(Id)); } } }
+    private Int32 _TenantId;
+    /// <summary>租户</summary>
+    [DisplayName("租户")]
+    [DataObjectField(false, false, false, 0)]
+    [BindColumn("TenantId", "租户", "")]
+    public Int32 TenantId { get => _TenantId; set { if (OnPropertyChanging(nameof(TenantId), value)) { _TenantId = value; OnPropertyChanged(nameof(TenantId)); } } }
 
     private String _Code = null!;
     /// <summary>编码</summary>
@@ -70,6 +78,7 @@ public class ApprovalCategory : Entity<ApprovalCategory>
         get => name switch
         {
             "Id" => _Id,
+            "TenantId" => _TenantId,
             "Code" => _Code,
             "Name" => _Name,
             "Sort" => _Sort,
@@ -82,6 +91,7 @@ public class ApprovalCategory : Entity<ApprovalCategory>
             switch (name)
             {
                 case "Id": _Id = value.ToInt(); break;
+                case "TenantId": _TenantId = value.ToInt(); break;
                 case "Code": _Code = Convert.ToString(value); break;
                 case "Name": _Name = Convert.ToString(value); break;
                 case "Sort": _Sort = value.ToInt(); break;

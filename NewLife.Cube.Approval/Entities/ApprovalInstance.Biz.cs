@@ -13,6 +13,7 @@ public partial class ApprovalInstance : Entity<ApprovalInstance>, IDataScope
         Meta.Interceptors.Add(new UserInterceptor { AllowEmpty = true });
         Meta.Interceptors.Add<TimeInterceptor>();
         Meta.Interceptors.Add(new IPInterceptor { AllowEmpty = true });
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     /// <summary>发起参数。</summary>

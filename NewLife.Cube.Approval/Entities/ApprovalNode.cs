@@ -9,6 +9,7 @@ using NewLife.Data;
 using XCode;
 using XCode.Cache;
 using XCode.Configuration;
+using XCode.Membership;
 using XCode.DataAccessLayer;
 
 namespace Approval.Data.Entities;
@@ -18,8 +19,9 @@ namespace Approval.Data.Entities;
 [DataObject]
 [Description("流程节点。随流程版本发布后不可变")]
 [BindIndex("IU_ApprovalNode_ProcessVersionId_NodeKey", true, "ProcessVersionId,NodeKey")]
+[BindIndex("IX_ApprovalNode_TenantId", false, "TenantId")]
 [BindTable("ApprovalNode", Description = "流程节点。随流程版本发布后不可变", ConnName = "Approval", DbType = DatabaseType.None)]
-public partial class ApprovalNode
+public partial class ApprovalNode : ITenantScope
 {
     #region 属性
     private Int32 _Id;
@@ -29,6 +31,13 @@ public partial class ApprovalNode
     [DataObjectField(true, true, false, 0)]
     [BindColumn("Id", "编号", "")]
     public Int32 Id { get => _Id; set { if (OnPropertyChanging("Id", value)) { _Id = value; OnPropertyChanged("Id"); } } }
+    private Int32 _TenantId;
+    /// <summary>租户</summary>
+    [DisplayName("租户")]
+    [Description("租户")]
+    [DataObjectField(false, false, false, 0)]
+    [BindColumn("TenantId", "租户", "")]
+    public Int32 TenantId { get => _TenantId; set { if (OnPropertyChanging("TenantId", value)) { _TenantId = value; OnPropertyChanged("TenantId"); } } }
 
     private Int32 _ProcessVersionId;
     /// <summary>流程版本</summary>
@@ -104,6 +113,7 @@ public partial class ApprovalNode
         get => name switch
         {
             "Id" => _Id,
+            "TenantId" => _TenantId,
             "ProcessVersionId" => _ProcessVersionId,
             "NodeKey" => _NodeKey,
             "Name" => _Name,
@@ -119,6 +129,7 @@ public partial class ApprovalNode
             switch (name)
             {
                 case "Id": _Id = value.ToInt(); break;
+                case "TenantId": _TenantId = value.ToInt(); break;
                 case "ProcessVersionId": _ProcessVersionId = value.ToInt(); break;
                 case "NodeKey": _NodeKey = Convert.ToString(value); break;
                 case "Name": _Name = Convert.ToString(value); break;
@@ -144,13 +155,8 @@ public partial class ApprovalNode
     {
         if (id < 0) return null;
 
-        // 实体缓存
-        if (Meta.Session.Count < 1000) return Meta.Cache.Find(e => e.Id == id);
-
-        // 单对象缓存
-        return Meta.SingleCache[id];
-
-        //return Find(_.Id == id);
+        // 多租户：实体缓存和单对象缓存都不过租户过滤，改走数据库查询，由 TenantInterceptor 附加租户条件
+        return Find(_.Id == id);
     }
 
     /// <summary>根据流程版本、节点键查找</summary>
@@ -162,9 +168,6 @@ public partial class ApprovalNode
         if (processVersionId < 0) return null;
         if (nodeKey.IsNullOrEmpty()) return null;
 
-        // 实体缓存
-        if (Meta.Session.Count < 1000) return Meta.Cache.Find(e => e.ProcessVersionId == processVersionId && e.NodeKey.EqualIgnoreCase(nodeKey));
-
         return Find(_.ProcessVersionId == processVersionId & _.NodeKey == nodeKey);
     }
 
@@ -174,9 +177,6 @@ public partial class ApprovalNode
     public static IList<ApprovalNode> FindAllByProcessVersionId(Int32 processVersionId)
     {
         if (processVersionId < 0) return [];
-
-        // 实体缓存
-        if (Meta.Session.Count < 1000) return Meta.Cache.FindAll(e => e.ProcessVersionId == processVersionId);
 
         return FindAll(_.ProcessVersionId == processVersionId);
     }
@@ -210,6 +210,9 @@ public partial class ApprovalNode
         /// <summary>编号</summary>
         public static readonly Field Id = FindByName("Id");
 
+        /// <summary>租户</summary>
+        public static readonly Field TenantId = FindByName("TenantId");
+
         /// <summary>流程版本</summary>
         public static readonly Field ProcessVersionId = FindByName("ProcessVersionId");
 
@@ -242,6 +245,9 @@ public partial class ApprovalNode
     {
         /// <summary>编号</summary>
         public const String Id = "Id";
+
+        /// <summary>租户</summary>
+        public const String TenantId = "TenantId";
 
         /// <summary>流程版本</summary>
         public const String ProcessVersionId = "ProcessVersionId";

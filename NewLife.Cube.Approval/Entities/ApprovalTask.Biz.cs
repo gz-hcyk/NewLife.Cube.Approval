@@ -1,4 +1,5 @@
 ﻿using XCode;
+using XCode.Membership;
 
 namespace Approval.Data.Entities;
 
@@ -6,6 +7,7 @@ public partial class ApprovalTask : Entity<ApprovalTask>
 {
     static ApprovalTask()
     {
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     /// <summary>某实例当前待处理的审批任务。</summary>

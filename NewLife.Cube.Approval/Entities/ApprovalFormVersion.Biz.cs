@@ -1,5 +1,6 @@
 ﻿using NewLife;
 using XCode;
+using XCode.Membership;
 
 namespace Approval.Data.Entities;
 
@@ -10,6 +11,7 @@ public partial class ApprovalFormVersion : Entity<ApprovalFormVersion>
         Meta.Interceptors.Add(new UserInterceptor { AllowEmpty = true });
         Meta.Interceptors.Add<TimeInterceptor>();
         Meta.Interceptors.Add(new IPInterceptor { AllowEmpty = true });
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     /// <summary>已发布或已归档的结构不可再改。</summary>

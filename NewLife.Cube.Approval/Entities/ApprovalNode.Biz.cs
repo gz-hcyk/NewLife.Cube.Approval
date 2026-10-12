@@ -1,5 +1,6 @@
 ﻿using NewLife;
 using XCode;
+using XCode.Membership;
 
 namespace Approval.Data.Entities;
 
@@ -7,6 +8,7 @@ public partial class ApprovalNode : Entity<ApprovalNode>
 {
     static ApprovalNode()
     {
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     /// <summary>流程版本离开草稿后，节点不可改、不可删。</summary>

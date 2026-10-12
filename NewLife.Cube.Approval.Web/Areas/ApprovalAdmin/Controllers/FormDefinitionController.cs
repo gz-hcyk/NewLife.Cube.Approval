@@ -14,7 +14,7 @@ namespace Approval.Web.Areas.ApprovalAdmin.Controllers;
 
 /// <summary>表单定义。</summary>
 [DisplayName("表单定义")]
-[Menu(30, true, Icon = "edit")]
+[Menu(30, true, Icon = "edit", Mode = MenuModes.Admin | MenuModes.Tenant)]
 [ApprovalAdminArea]
 public class FormDefinitionController : EntityController<ApprovalFormDefinition>
 {

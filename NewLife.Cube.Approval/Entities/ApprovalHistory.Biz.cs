@@ -1,5 +1,6 @@
 ﻿using NewLife;
 using XCode;
+using XCode.Membership;
 
 namespace Approval.Data.Entities;
 
@@ -10,6 +11,7 @@ public partial class ApprovalHistory : Entity<ApprovalHistory>
         Meta.Table.DataTable.InsertOnly = true;
         Meta.Interceptors.Add<TimeInterceptor>();
         Meta.Interceptors.Add(new IPInterceptor { AllowEmpty = true });
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     /// <summary>只追加，不接受修改。</summary>

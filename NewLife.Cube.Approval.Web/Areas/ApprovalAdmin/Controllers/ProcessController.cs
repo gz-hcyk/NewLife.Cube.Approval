@@ -11,7 +11,7 @@ namespace Approval.Web.Areas.ApprovalAdmin.Controllers;
 
 /// <summary>流程定义。</summary>
 [DisplayName("流程定义")]
-[Menu(20, true, Icon = "share")]
+[Menu(20, true, Icon = "share", Mode = MenuModes.Admin | MenuModes.Tenant)]
 [ApprovalAdminArea]
 public class ProcessController : EntityController<ApprovalProcess>
 {

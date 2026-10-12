@@ -283,3 +283,24 @@ npm run dev
 排他网关的出线可以按当前表单值选路，JSON 形状与第 2 轮相同：非默认出线带 `condition`（`field`、`op`、`value`），默认出线 `default: true`。设计页点开这类连线后，从表单字段里选字段，比较符是等于、不等于、大于、大于等于、小于、小于等于、属于。大于等于和小于等于写入 `ge`、`le`；运行时也认 `gte`、`lte`。属于的比较值用逗号分隔，保存成数组。数字会按数字比较，办理页把天数存成字符串时同样能比。字段缺失、不是数字、或都不成立时走默认出线。图上非默认出线显示 `days ≥ 3` 这种文字，默认出线显示「默认」。`Round10Tests` 覆盖数字、字符串天数、字符串等于、属于，以及字段缺失时走默认；发起后网关读的是当前实例表单。
 
 浏览器对照 `http://127.0.0.1:3002`。审批中的「学生乙的请假」当时还是第 17 版直线（开始、辅导员审批、结束）。办理详情默认是办理过程：学生乙于 2026-10-05 12:25:46 提交，该生辅导员待处理，第一屏没有流程图。切到流程图后，开始已完成，辅导员审批为当前，结束未到。设计页主区域是这张图。点「辅导员审批」打开抽屉，办理人规则仍是该生辅导员，抽屉里可以上移、下移、移除。添加排他网关后，出线对话框里表单字段是天数，比较是大于等于，比较值是 3，预览为 `days ≥ 3`；另一条出线标「默认」。把开始改连到排他，把天数条件出线改到辅导员审批，并把开始节点的天数从隐藏改成可编辑（网关紧挨开始时，隐藏字段不会进入表单），然后发布。请假流程成为第 18 版：开始到排他，`days` `ge` `3` 到辅导员审批，默认出线到结束。学生乙发起「分支长假」、天数 5：时间线有选择分支、走向辅导员审批，图上排他已完成，辅导员审批为当前，结束未到。发起「分支短假」、天数 1：时间线走向结束，图上结束已完成，辅导员审批未到。
+
+## 第 11 轮
+
+日期：2026-10-12。按魔方内置多租户最佳实践给审批加租户隔离。第 0–10 轮行为不改，未开启多租户时与 1.0 完全一致。
+
+隔离模型经确认选**单库共享 + TenantId 列**（魔方标准：`ITenantScope` 实体 + `TenantInterceptor` + `Tenant/TenantUser` 成员关系），不拆库、不加 `tenantId` 前缀表。覆盖全部 12 张表（设计态 + 运行态）。开关由 `AddApproval` 默认打开（`enableTenant` 参数可关），强制模式默认 Shadow 兼容期。菜单按 `Admin | Tenant` 双可见。
+
+链路全部落在框架上，引擎和控制器不手写过滤：
+
+1. `DataScopeMiddleware`（`UseCube` 内置）按 `X-Tenant`（租户编码）> `X-Tenant-Id`（废弃）> `?tenantId=` > Cookie 解析租户，写入 `TenantContext.Current`（AsyncLocal，请求结束还原）。显式但无效 → 400；无标识 + Shadow → 放行并记影子日志。`EnableTenant=false` 时中间件不设上下文，`CurrentId` 恒为 0，拦截器全部空转。
+2. 12 个实体静态构造器统一注册 `Meta.Interceptors.Add<TenantInterceptor>()`。查询经 `OnQuery` 自动附加 `TenantId = CurrentId`（`CurrentId <= 0` 时原样返回）；写入经 `OnValid` 在 `TenantId = 0` 时回填当前租户。`Find`/`FindAll`/`FindById`/`FindCount` 全走这条链。
+3. 引擎办理入口（Start/Agree/Reject/Transfer/Withdraw/Resubmit/AddSign/Read）在载入任务和实例后加 `EnsureTenant` 纵深防御：租户模式下归属不符抛 4031。正常情况下查询过滤已先拦（返回 4041），这里是第二道闸。
+4. 设计控制器（`EntityController`）由 `ReadOnlyEntityController2` 自动处理：`CreateWhere` 附加租户条件，写路径新增强制归属、修改/删除校验归属。
+5. `TenantUser` 成员关系 + 认证层 `ValidateTenant`（fail-closed）管谁能进哪个租户；`ChooseTenant` 让已绑定用户回落到第一个租户，未绑定用户不设上下文（防止看全量）。
+
+过程中发现并修掉两个真问题：
+
+- **实例编号唯一索引**：`No` 原是全局唯一，而 `NextNo` 的计数已被租户过滤，两个租户会生成相同单据号撞唯一索引。按三张 `Code` 表的同一模式改为 `(TenantId, No)` 联合唯一，实例编号按租户独立计数。1.0 遗留的四个全局唯一索引（`IU_ApprovalCategory_Code`、`IU_ApprovalFormDefinition_Code`、`IU_ApprovalProcess_Code`、`IU_ApprovalInstance_No`）由 `UseApproval` 启动时用 `GetSchemaSQL(DDLSchema.DropIndex)` 自动清理——XCode 迁移（`Migration.On`）只登记不执行删索引，不清理会挡住跨租户同编码写入。
+- **生成式实体的缓存快路漏租户**：xcodetool 生成的 `FindById`/`FindByCode`/`FindAllByXxx` 在表行数小于 1000 时走 `Meta.Cache.Find`（行数足够时走 `Meta.SingleCache`），这两条都不过 `TenantInterceptor` 的查询过滤，多租户下跨租户按主键能读到数据。6 个实体 21 处缓存快路全部改走 `Find`/`FindAll` 数据库查询（与手写风格的 `ApprovalInstance` 一致），代价是设计态小表每次查询多一次数据库往返。
+
+`Round11Tests`（6 个）覆盖：写入回填（实例/表单值/待办/历史四张表）、查询隔离（主键与编码双通道）、跨租户办理与撤回按 4041 拒绝且本租户仍可办理、设计态按租户隔离、管理后台全量、无上下文影子兼容、五个菜单的 `Admin | Tenant` 双可见反射校验、非法 `X-Tenant` 头 400 拒绝。全量 `dotnet test` 47 个测试，5 个 `HttpRuntimeTests` 失败为存量抖动（干净树上同样复现，SQLite `database is locked` 与验证码竞争，与本次改动无关）。

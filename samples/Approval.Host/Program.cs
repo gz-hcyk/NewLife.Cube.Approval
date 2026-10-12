@@ -16,6 +16,9 @@ builder.Services.AddControllers(options =>
 _ = typeof(LeaveRequest).Assembly;
 
 builder.Services.AddCube();
+// AddApproval 默认开启魔方内置多租户（Shadow 兼容期）：审批 12 张表按 TenantId 隔离，
+// 租户识别支持 X-Tenant 头 / ?tenantId= 查询串 / Cookie，管理后台（TenantId=0）看全量。
+// 不需要多租户时传 AddApproval(enableTenant: false)。
 builder.Services.AddApproval();
 
 // AddCube 内部会注册返回 null 的 ITracer 工厂，必须在其后再注册。

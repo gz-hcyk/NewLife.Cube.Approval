@@ -12,6 +12,7 @@ public partial class ApprovalProcess : Entity<ApprovalProcess>
         Meta.Interceptors.Add(new UserInterceptor { AllowEmpty = true });
         Meta.Interceptors.Add<TimeInterceptor>();
         Meta.Interceptors.Add(new IPInterceptor { AllowEmpty = true });
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     /// <summary>验证数据。</summary>

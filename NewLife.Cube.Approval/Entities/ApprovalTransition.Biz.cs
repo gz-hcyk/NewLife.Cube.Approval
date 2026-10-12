@@ -1,5 +1,6 @@
 ﻿using NewLife;
 using XCode;
+using XCode.Membership;
 
 namespace Approval.Data.Entities;
 
@@ -7,6 +8,7 @@ public partial class ApprovalTransition : Entity<ApprovalTransition>
 {
     static ApprovalTransition()
     {
+        Meta.Interceptors.Add<TenantInterceptor>();
     }
 
     /// <summary>流程版本离开草稿后，连线不可改。</summary>

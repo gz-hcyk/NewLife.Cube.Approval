@@ -9,6 +9,7 @@ using NewLife.Data;
 using XCode;
 using XCode.Cache;
 using XCode.Configuration;
+using XCode.Membership;
 using XCode.DataAccessLayer;
 
 namespace Approval.Data.Entities;
@@ -19,8 +20,9 @@ namespace Approval.Data.Entities;
 [Description("流程版本。发布后定义不可变，并固化节点与连线")]
 [BindIndex("IU_ApprovalProcessVersion_ProcessId_Version", true, "ProcessId,Version")]
 [BindIndex("IX_ApprovalProcessVersion_FormVersionId", false, "FormVersionId")]
+[BindIndex("IX_ApprovalProcessVersion_TenantId", false, "TenantId")]
 [BindTable("ApprovalProcessVersion", Description = "流程版本。发布后定义不可变，并固化节点与连线", ConnName = "Approval", DbType = DatabaseType.None)]
-public partial class ApprovalProcessVersion
+public partial class ApprovalProcessVersion : ITenantScope
 {
     #region 属性
     private Int32 _Id;
@@ -30,6 +32,13 @@ public partial class ApprovalProcessVersion
     [DataObjectField(true, true, false, 0)]
     [BindColumn("Id", "编号", "")]
     public Int32 Id { get => _Id; set { if (OnPropertyChanging("Id", value)) { _Id = value; OnPropertyChanged("Id"); } } }
+    private Int32 _TenantId;
+    /// <summary>租户</summary>
+    [DisplayName("租户")]
+    [Description("租户")]
+    [DataObjectField(false, false, false, 0)]
+    [BindColumn("TenantId", "租户", "")]
+    public Int32 TenantId { get => _TenantId; set { if (OnPropertyChanging("TenantId", value)) { _TenantId = value; OnPropertyChanged("TenantId"); } } }
 
     private Int32 _ProcessId;
     /// <summary>流程</summary>
@@ -193,6 +202,7 @@ public partial class ApprovalProcessVersion
         get => name switch
         {
             "Id" => _Id,
+            "TenantId" => _TenantId,
             "ProcessId" => _ProcessId,
             "Version" => _Version,
             "Status" => _Status,
@@ -218,6 +228,7 @@ public partial class ApprovalProcessVersion
             switch (name)
             {
                 case "Id": _Id = value.ToInt(); break;
+                case "TenantId": _TenantId = value.ToInt(); break;
                 case "ProcessId": _ProcessId = value.ToInt(); break;
                 case "Version": _Version = value.ToInt(); break;
                 case "Status": _Status = (Approval.Data.Entities.VersionStatus)value.ToInt(); break;
@@ -253,13 +264,8 @@ public partial class ApprovalProcessVersion
     {
         if (id < 0) return null;
 
-        // 实体缓存
-        if (Meta.Session.Count < 1000) return Meta.Cache.Find(e => e.Id == id);
-
-        // 单对象缓存
-        return Meta.SingleCache[id];
-
-        //return Find(_.Id == id);
+        // 多租户：实体缓存和单对象缓存都不过租户过滤，改走数据库查询，由 TenantInterceptor 附加租户条件
+        return Find(_.Id == id);
     }
 
     /// <summary>根据流程、版本号查找</summary>
@@ -271,9 +277,6 @@ public partial class ApprovalProcessVersion
         if (processId < 0) return null;
         if (version < 0) return null;
 
-        // 实体缓存
-        if (Meta.Session.Count < 1000) return Meta.Cache.Find(e => e.ProcessId == processId && e.Version == version);
-
         return Find(_.ProcessId == processId & _.Version == version);
     }
 
@@ -284,9 +287,6 @@ public partial class ApprovalProcessVersion
     {
         if (processId < 0) return [];
 
-        // 实体缓存
-        if (Meta.Session.Count < 1000) return Meta.Cache.FindAll(e => e.ProcessId == processId);
-
         return FindAll(_.ProcessId == processId);
     }
 
@@ -296,9 +296,6 @@ public partial class ApprovalProcessVersion
     public static IList<ApprovalProcessVersion> FindAllByFormVersionId(Int32 formVersionId)
     {
         if (formVersionId < 0) return [];
-
-        // 实体缓存
-        if (Meta.Session.Count < 1000) return Meta.Cache.FindAll(e => e.FormVersionId == formVersionId);
 
         return FindAll(_.FormVersionId == formVersionId);
     }
@@ -336,6 +333,9 @@ public partial class ApprovalProcessVersion
     {
         /// <summary>编号</summary>
         public static readonly Field Id = FindByName("Id");
+
+        /// <summary>租户</summary>
+        public static readonly Field TenantId = FindByName("TenantId");
 
         /// <summary>流程</summary>
         public static readonly Field ProcessId = FindByName("ProcessId");
@@ -399,6 +399,9 @@ public partial class ApprovalProcessVersion
     {
         /// <summary>编号</summary>
         public const String Id = "Id";
+
+        /// <summary>租户</summary>
+        public const String TenantId = "TenantId";
 
         /// <summary>流程</summary>
         public const String ProcessId = "ProcessId";

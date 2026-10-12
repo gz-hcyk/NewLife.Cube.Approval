@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using NewLife.Cube;
 using NewLife.Log;
+using XCode;
+using XCode.DataAccessLayer;
 using XCode.Membership;
 
 namespace NewLife.Cube.Approval;
@@ -18,13 +20,23 @@ public static class ApprovalExtensions
     /// </summary>
     /// <param name="services">服务集合。</param>
     /// <param name="scanLov">为 true 时扫描审批枚举命名空间。</param>
+    /// <param name="enableTenant">
+    /// 为 true（默认）时开启魔方内置多租户 <c>CubeSetting.EnableTenant</c>（Shadow 兼容期：
+    /// 旧客户端不带租户标识时放行并记录影子日志，切 Enforce 后 fail-closed）。
+    /// 审批 12 张表均带 TenantId 列，查询过滤与写入回填由 <see cref="XCode.Membership.TenantInterceptor"/> 自动完成，
+    /// 审批菜单按 Admin|Tenant 双可见声明。传 false 时不干预宿主既有配置。
+    /// </param>
     /// <returns>同一个服务集合。</returns>
-    public static IServiceCollection AddApproval(this IServiceCollection services, Boolean scanLov = true)
+    public static IServiceCollection AddApproval(this IServiceCollection services, Boolean scanLov = true, Boolean enableTenant = true)
     {
         ArgumentNullException.ThrowIfNull(services);
 
         // UseCube 的 InitAll 只看到已经加载的程序集。
         _ = typeof(ApprovalInstance).Assembly;
+
+        // 多租户默认开启。租户识别由 DataScopeMiddleware 按 X-Tenant 头/查询串/Cookie 解析，
+        // 实体层拦截器按 TenantContext.CurrentId 自动过滤查询、回填写入，管理后台（TenantId=0）看全量。
+        if (enableTenant) CubeSetting.Current.EnableTenant = true;
 
         var mvc = services.AddControllers(options =>
         {
@@ -52,8 +64,46 @@ public static class ApprovalExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
         if (useLov) app.UseCubeLov();
+        DropLegacyUniqueIndexes();
         GrantAdmin();
         return app;
+    }
+
+    /// <summary>
+    /// 清理 1.0 遗留的全局唯一索引。租户化后 Code、No 改为 (TenantId, Code/No) 联合唯一，
+    /// 残留的旧索引会挡住跨租户同编码、同单据号写入。新库没有这些索引，直接空转。
+    /// XCode 迁移（Migration.On）只登记不执行删索引，这里主动补齐；失败不阻断启动。
+    /// </summary>
+    private static void DropLegacyUniqueIndexes()
+    {
+        var legacy = new (String Table, String Index)[]
+        {
+            ("ApprovalCategory", "IU_ApprovalCategory_Code"),
+            ("ApprovalFormDefinition", "IU_ApprovalFormDefinition_Code"),
+            ("ApprovalProcess", "IU_ApprovalProcess_Code"),
+            ("ApprovalInstance", "IU_ApprovalInstance_No"),
+        };
+        try
+        {
+            var dal = DAL.Create("Approval");
+            var meta = dal.Db.CreateMetaData();
+            var tables = meta.GetTables();
+            foreach (var (table, index) in legacy)
+            {
+                var dt = tables.FirstOrDefault(e => String.Equals(e.TableName, table, StringComparison.OrdinalIgnoreCase));
+                if (dt == null) continue;
+                var di = dt.Indexes.FirstOrDefault(e => String.Equals(e.Name, index, StringComparison.OrdinalIgnoreCase));
+                if (di == null) continue;
+                var sql = meta.GetSchemaSQL(DDLSchema.DropIndex, di);
+                if (!sql.IsNullOrEmpty()) dal.Execute(sql);
+                XTrace.WriteLine("清理审批遗留唯一索引[{0}]：{1}", index, sql);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 清理失败不阻断启动；最坏是升级库保留旧索引，留待运维手工处理
+            XTrace.WriteException(ex);
+        }
     }
 
     /// <summary>把名称或地址里带 Approval 的菜单权限授给 admin 的角色。</summary>

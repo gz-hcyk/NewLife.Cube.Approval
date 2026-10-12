@@ -9,6 +9,7 @@ using NewLife.Data;
 using XCode;
 using XCode.Cache;
 using XCode.Configuration;
+using XCode.Membership;
 using XCode.DataAccessLayer;
 
 namespace Approval.Data.Entities;
@@ -17,8 +18,9 @@ namespace Approval.Data.Entities;
 [Serializable]
 [DataObject]
 [Description("表单值。与实例一对一，定义与值分开存放")]
+[BindIndex("IX_ApprovalFormData_TenantId", false, "TenantId")]
 [BindTable("ApprovalFormData", Description = "表单值。与实例一对一，定义与值分开存放", ConnName = "Approval", DbType = DatabaseType.None)]
-public partial class ApprovalFormData
+public partial class ApprovalFormData : ITenantScope
 {
     #region 属性
     private Int64 _Id;
@@ -28,6 +30,13 @@ public partial class ApprovalFormData
     [DataObjectField(true, false, false, 0)]
     [BindColumn("Id", "编号。等于实例编号", "", DataScale = "time")]
     public Int64 Id { get => _Id; set { if (OnPropertyChanging("Id", value)) { _Id = value; OnPropertyChanged("Id"); } } }
+    private Int32 _TenantId;
+    /// <summary>租户</summary>
+    [DisplayName("租户")]
+    [Description("租户")]
+    [DataObjectField(false, false, false, 0)]
+    [BindColumn("TenantId", "租户", "")]
+    public Int32 TenantId { get => _TenantId; set { if (OnPropertyChanging("TenantId", value)) { _TenantId = value; OnPropertyChanged("TenantId"); } } }
 
     private Int32 _FormVersionId;
     /// <summary>表单版本</summary>
@@ -87,6 +96,7 @@ public partial class ApprovalFormData
         get => name switch
         {
             "Id" => _Id,
+            "TenantId" => _TenantId,
             "FormVersionId" => _FormVersionId,
             "Data" => _Data,
             "DataSize" => _DataSize,
@@ -100,6 +110,7 @@ public partial class ApprovalFormData
             switch (name)
             {
                 case "Id": _Id = value.ToLong(); break;
+                case "TenantId": _TenantId = value.ToInt(); break;
                 case "FormVersionId": _FormVersionId = value.ToInt(); break;
                 case "Data": _Data = Convert.ToString(value); break;
                 case "DataSize": _DataSize = value.ToInt(); break;
@@ -146,6 +157,9 @@ public partial class ApprovalFormData
         /// <summary>编号。等于实例编号</summary>
         public static readonly Field Id = FindByName("Id");
 
+        /// <summary>租户</summary>
+        public static readonly Field TenantId = FindByName("TenantId");
+
         /// <summary>表单版本</summary>
         public static readonly Field FormVersionId = FindByName("FormVersionId");
 
@@ -172,6 +186,9 @@ public partial class ApprovalFormData
     {
         /// <summary>编号。等于实例编号</summary>
         public const String Id = "Id";
+
+        /// <summary>租户</summary>
+        public const String TenantId = "TenantId";
 
         /// <summary>表单版本</summary>
         public const String FormVersionId = "FormVersionId";
