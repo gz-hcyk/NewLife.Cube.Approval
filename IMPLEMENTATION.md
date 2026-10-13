@@ -304,3 +304,23 @@ npm run dev
 - **生成式实体的缓存快路漏租户**：xcodetool 生成的 `FindById`/`FindByCode`/`FindAllByXxx` 在表行数小于 1000 时走 `Meta.Cache.Find`（行数足够时走 `Meta.SingleCache`），这两条都不过 `TenantInterceptor` 的查询过滤，多租户下跨租户按主键能读到数据。6 个实体 21 处缓存快路全部改走 `Find`/`FindAll` 数据库查询（与手写风格的 `ApprovalInstance` 一致），代价是设计态小表每次查询多一次数据库往返。
 
 `Round11Tests`（6 个）覆盖：写入回填（实例/表单值/待办/历史四张表）、查询隔离（主键与编码双通道）、跨租户办理与撤回按 4041 拒绝且本租户仍可办理、设计态按租户隔离、管理后台全量、无上下文影子兼容、五个菜单的 `Admin | Tenant` 双可见反射校验、非法 `X-Tenant` 头 400 拒绝。全量 `dotnet test` 47 个测试，5 个 `HttpRuntimeTests` 失败为存量抖动（干净树上同样复现，SQLite `database is locked` 与验证码竞争，与本次改动无关）。
+
+## 第 12 轮
+
+日期：2026-10-13。落实「实体关联用户一律 UserId」约定：删掉冗余的用户姓名快照列，姓名改为读取时按 UserId 现查。第 0–11 轮行为不改，接口 JSON 契约不变（前端零改动）。
+
+约定原文：实体类中需要关联用户的，不使用 Code 或 displayName，一律使用 UserId。学籍、部门等宿主信息由接入方按 UserId 回自己的表查，与 `SubjectLink`（业务主体只记用户编号）同一思路。
+
+删除的列均已有对应的 UserId 关联列，属冗余快照：`ApprovalInstance` 的 `UserName`/`SubjectName`/`ProxyName`、`ApprovalTask` 的 `AssigneeName`/`ApplicantName`、`ApprovalHistory` 的 `OperatorName`、`ApprovalFormVersion` 与 `ApprovalProcessVersion` 的 `PublishUser`、`ApprovalFormData` 的 `UpdateUser`。框架审计字段（`CreateUser`/`UpdateUser` 等，Model=False 扩展类）由基类自动维护，不动；部门名快照（`DepartmentName`、`OperatorDept`）不是用户关联，保留。
+
+配套改动：
+
+1. 新增 `UserDisplay`（`Approval.Data`）：`Name(User?)` 与 `Name(Int32 userId)`，显示名为空退登录名，用户不存在返回空串。实体不存姓名，需要姓名的地方读取时现查。
+2. 引擎 `WriteHistory`/`CreateTask`/`SaveForm` 与表单值插入不再写姓名；`Reject` 的退回备注由 `inst.UserName` 改为 `UserDisplay.Name(inst.UserId)` 现查；标题、历史意见等自由文本仍在生成时取显示名——那是文案，不是关联。
+3. Web 层 `Describe`/`Drafts`/`DescribeTask` 的 `userName`/`subjectName`/`proxyName`/`assigneeName`/`operatorName` 改为按 UserId 经 `UserDisplay` 现查，JSON 键不变，`samples/web` 前端不用改；`Me()` 的显示名逻辑一并收敛。
+4. 两个 `Publish`（表单、流程）不再写 `PublishUser`，只留 `PublishUserId`。
+5. `Approval.htm`（xcodetool 生成的模型文档）同步删除对应字段行。
+
+遗留列不做迁移删除：XCode `Migration.On` 只加不删，存量库上的旧列静默保留，无读写影响。
+
+测试：全量 `dotnet test` 47 个测试，41 通过；6 个失败（5 个 `HttpRuntimeTests` + `Round1Tests.Sequential_runs_in_order`）在干净树 d1a6352 上逐一复现同样失败（SQLite `database is locked` 环境争用，与本次改动无关）。`Round11Tests` 6/6 通过。

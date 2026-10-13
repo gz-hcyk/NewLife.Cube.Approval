@@ -105,14 +105,6 @@ public partial class ApprovalHistory : ITenantScope
     [BindColumn("OperatorId", "操作人", "")]
     public Int32 OperatorId { get => _OperatorId; set { if (OnPropertyChanging("OperatorId", value)) { _OperatorId = value; OnPropertyChanged("OperatorId"); } } }
 
-    private String _OperatorName = null!;
-    /// <summary>操作人姓名</summary>
-    [DisplayName("操作人姓名")]
-    [Description("操作人姓名")]
-    [DataObjectField(false, false, false, 50)]
-    [BindColumn("OperatorName", "操作人姓名", "")]
-    public String OperatorName { get => _OperatorName; set { if (OnPropertyChanging("OperatorName", value)) { _OperatorName = value; OnPropertyChanged("OperatorName"); } } }
-
     private String? _OperatorDept;
     /// <summary>操作人部门</summary>
     [DisplayName("操作人部门")]
@@ -188,7 +180,6 @@ public partial class ApprovalHistory : ITenantScope
             "Action" => _Action,
             "ActionName" => _ActionName,
             "OperatorId" => _OperatorId,
-            "OperatorName" => _OperatorName,
             "OperatorDept" => _OperatorDept,
             "Comment" => _Comment,
             "FromStatus" => _FromStatus,
@@ -212,7 +203,6 @@ public partial class ApprovalHistory : ITenantScope
                 case "Action": _Action = Convert.ToString(value); break;
                 case "ActionName": _ActionName = Convert.ToString(value); break;
                 case "OperatorId": _OperatorId = value.ToInt(); break;
-                case "OperatorName": _OperatorName = Convert.ToString(value); break;
                 case "OperatorDept": _OperatorDept = Convert.ToString(value); break;
                 case "Comment": _Comment = Convert.ToString(value); break;
                 case "FromStatus": _FromStatus = value.ToInt(); break;
@@ -341,9 +331,6 @@ public partial class ApprovalHistory : ITenantScope
         /// <summary>操作人</summary>
         public static readonly Field OperatorId = FindByName("OperatorId");
 
-        /// <summary>操作人姓名</summary>
-        public static readonly Field OperatorName = FindByName("OperatorName");
-
         /// <summary>操作人部门</summary>
         public static readonly Field OperatorDept = FindByName("OperatorDept");
 
@@ -400,9 +387,6 @@ public partial class ApprovalHistory : ITenantScope
 
         /// <summary>操作人</summary>
         public const String OperatorId = "OperatorId";
-
-        /// <summary>操作人姓名</summary>
-        public const String OperatorName = "OperatorName";
 
         /// <summary>操作人部门</summary>
         public const String OperatorDept = "OperatorDept";

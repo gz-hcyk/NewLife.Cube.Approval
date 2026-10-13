@@ -62,14 +62,6 @@ public partial class ApprovalFormData : ITenantScope
     [BindColumn("DataSize", "字节数", "")]
     public Int32 DataSize { get => _DataSize; set { if (OnPropertyChanging("DataSize", value)) { _DataSize = value; OnPropertyChanged("DataSize"); } } }
 
-    private String? _UpdateUser;
-    /// <summary>最后修改人</summary>
-    [DisplayName("最后修改人")]
-    [Description("最后修改人")]
-    [DataObjectField(false, false, true, 50)]
-    [BindColumn("UpdateUser", "最后修改人", "")]
-    public String? UpdateUser { get => _UpdateUser; set { if (OnPropertyChanging("UpdateUser", value)) { _UpdateUser = value; OnPropertyChanged("UpdateUser"); } } }
-
     private Int32 _UpdateUserID;
     /// <summary>最后修改人</summary>
     [DisplayName("最后修改人")]
@@ -100,7 +92,6 @@ public partial class ApprovalFormData : ITenantScope
             "FormVersionId" => _FormVersionId,
             "Data" => _Data,
             "DataSize" => _DataSize,
-            "UpdateUser" => _UpdateUser,
             "UpdateUserID" => _UpdateUserID,
             "UpdateTime" => _UpdateTime,
             _ => base[name]
@@ -114,7 +105,6 @@ public partial class ApprovalFormData : ITenantScope
                 case "FormVersionId": _FormVersionId = value.ToInt(); break;
                 case "Data": _Data = Convert.ToString(value); break;
                 case "DataSize": _DataSize = value.ToInt(); break;
-                case "UpdateUser": _UpdateUser = Convert.ToString(value); break;
                 case "UpdateUserID": _UpdateUserID = value.ToInt(); break;
                 case "UpdateTime": _UpdateTime = value.ToDateTime(); break;
                 default: base[name] = value; break;
@@ -170,9 +160,6 @@ public partial class ApprovalFormData : ITenantScope
         public static readonly Field DataSize = FindByName("DataSize");
 
         /// <summary>最后修改人</summary>
-        public static readonly Field UpdateUser = FindByName("UpdateUser");
-
-        /// <summary>最后修改人</summary>
         public static readonly Field UpdateUserID = FindByName("UpdateUserID");
 
         /// <summary>最后修改时间</summary>
@@ -198,9 +185,6 @@ public partial class ApprovalFormData : ITenantScope
 
         /// <summary>字节数</summary>
         public const String DataSize = "DataSize";
-
-        /// <summary>最后修改人</summary>
-        public const String UpdateUser = "UpdateUser";
 
         /// <summary>最后修改人</summary>
         public const String UpdateUserID = "UpdateUserID";

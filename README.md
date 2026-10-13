@@ -152,10 +152,11 @@ npm run dev
 | `samples/Approval.Host` | 薄宿主，只注册扩展并播种请假 |
 | `samples/Approval.Leave` | 请假单和状态回写，不进核心包 |
 | `samples/web` | 可选 TDesign 页面 |
-| `Approval.Tests` | 第 0 轮到第 11 轮测试 |
+| `Approval.Tests` | 第 0 轮到第 12 轮测试 |
 
 ## 有意不做
 
+- 用户姓名快照列。实体关联用户一律存 `UserId`，不存 Code 或 displayName；姓名在读取时按 `UserId` 现查（`UserDisplay`）。学籍、部门等宿主信息由接入方按 `UserId` 回自己的表查。
 - 完整学籍系统。不建学籍、班级和辅导员档案。
 - 令牌表。并行汇聚看任务状态，排他选择记在审批历史的 `choose` 上。
 - 流程图上拖拽改线。设计页和办理详情里的图只读。

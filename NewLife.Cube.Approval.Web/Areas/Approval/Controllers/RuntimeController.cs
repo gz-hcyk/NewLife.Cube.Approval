@@ -24,7 +24,7 @@ public class RuntimeController : ControllerBaseX
         {
             var user = Current();
             var dept = Department.FindByID(user.DepartmentID);
-            var display = user.DisplayName.IsNullOrEmpty() ? user.Name : user.DisplayName;
+            var display = UserDisplay.Name(user);
             return Json(0, "ok", new
             {
                 id = user.ID,
@@ -240,8 +240,10 @@ public class RuntimeController : ControllerBaseX
                 status = (Int32)inst.Status,
                 version = inst.Version,
                 processId = inst.ProcessId,
-                subjectName = inst.SubjectName,
-                proxyName = inst.ProxyName,
+                subjectUserId = inst.SubjectUserId,
+                subjectName = UserDisplay.Name(inst.SubjectUserId),
+                proxyUserId = inst.ProxyUserId,
+                proxyName = inst.ProxyUserId > 0 ? UserDisplay.Name(inst.ProxyUserId) : null,
                 userId = inst.UserId,
             }), null);
         }
@@ -491,11 +493,11 @@ public class RuntimeController : ControllerBaseX
             status = (Int32)inst.Status,
             version = inst.Version,
             userId = inst.UserId,
-            userName = inst.UserName,
+            userName = UserDisplay.Name(inst.UserId),
             subjectUserId = inst.SubjectUserId,
-            subjectName = inst.SubjectName,
+            subjectName = UserDisplay.Name(inst.SubjectUserId),
             proxyUserId = inst.ProxyUserId,
-            proxyName = inst.ProxyName,
+            proxyName = inst.ProxyUserId > 0 ? UserDisplay.Name(inst.ProxyUserId) : null,
             counselorUserId = inst.CounselorUserId,
             departmentId = inst.DepartmentId,
             round = inst.Round,
@@ -511,7 +513,7 @@ public class RuntimeController : ControllerBaseX
                 actionName = h.ActionName,
                 comment = h.Comment,
                 operatorId = h.OperatorId,
-                operatorName = h.OperatorName,
+                operatorName = UserDisplay.Name(h.OperatorId),
                 fromStatus = h.FromStatus,
                 toStatus = h.ToStatus,
                 round = h.Round,
@@ -539,7 +541,7 @@ public class RuntimeController : ControllerBaseX
         id = t.Id.ToString(),
         instanceId = t.InstanceId.ToString(),
         assigneeId = t.AssigneeId,
-        assigneeName = t.AssigneeName,
+        assigneeName = UserDisplay.Name(t.AssigneeId),
         nodeKey = t.NodeKey,
         nodeName = t.NodeName,
         status = (Int32)t.Status,

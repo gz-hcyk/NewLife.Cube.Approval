@@ -104,14 +104,6 @@ public partial class ApprovalProcessVersion : ITenantScope
     [BindColumn("PublishUserId", "发布人", "")]
     public Int32 PublishUserId { get => _PublishUserId; set { if (OnPropertyChanging("PublishUserId", value)) { _PublishUserId = value; OnPropertyChanged("PublishUserId"); } } }
 
-    private String? _PublishUser;
-    /// <summary>发布人姓名</summary>
-    [DisplayName("发布人姓名")]
-    [Description("发布人姓名")]
-    [DataObjectField(false, false, true, 50)]
-    [BindColumn("PublishUser", "发布人姓名", "")]
-    public String? PublishUser { get => _PublishUser; set { if (OnPropertyChanging("PublishUser", value)) { _PublishUser = value; OnPropertyChanged("PublishUser"); } } }
-
     private String? _CreateUser;
     /// <summary>创建者</summary>
     [Category("扩展")]
@@ -211,7 +203,6 @@ public partial class ApprovalProcessVersion : ITenantScope
             "NodeCount" => _NodeCount,
             "PublishTime" => _PublishTime,
             "PublishUserId" => _PublishUserId,
-            "PublishUser" => _PublishUser,
             "CreateUser" => _CreateUser,
             "CreateUserID" => _CreateUserID,
             "CreateTime" => _CreateTime,
@@ -237,7 +228,6 @@ public partial class ApprovalProcessVersion : ITenantScope
                 case "NodeCount": _NodeCount = value.ToInt(); break;
                 case "PublishTime": _PublishTime = value.ToDateTime(); break;
                 case "PublishUserId": _PublishUserId = value.ToInt(); break;
-                case "PublishUser": _PublishUser = Convert.ToString(value); break;
                 case "CreateUser": _CreateUser = Convert.ToString(value); break;
                 case "CreateUserID": _CreateUserID = value.ToInt(); break;
                 case "CreateTime": _CreateTime = value.ToDateTime(); break;
@@ -361,9 +351,6 @@ public partial class ApprovalProcessVersion : ITenantScope
         /// <summary>发布人</summary>
         public static readonly Field PublishUserId = FindByName("PublishUserId");
 
-        /// <summary>发布人姓名</summary>
-        public static readonly Field PublishUser = FindByName("PublishUser");
-
         /// <summary>创建者</summary>
         public static readonly Field CreateUser = FindByName("CreateUser");
 
@@ -426,9 +413,6 @@ public partial class ApprovalProcessVersion : ITenantScope
 
         /// <summary>发布人</summary>
         public const String PublishUserId = "PublishUserId";
-
-        /// <summary>发布人姓名</summary>
-        public const String PublishUser = "PublishUser";
 
         /// <summary>创建者</summary>
         public const String CreateUser = "CreateUser";

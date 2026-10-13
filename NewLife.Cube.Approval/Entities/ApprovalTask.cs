@@ -121,14 +121,6 @@ public partial class ApprovalTask : ITenantScope
     [BindColumn("AssigneeId", "处理人", "")]
     public Int32 AssigneeId { get => _AssigneeId; set { if (OnPropertyChanging("AssigneeId", value)) { _AssigneeId = value; OnPropertyChanged("AssigneeId"); } } }
 
-    private String _AssigneeName = null!;
-    /// <summary>处理人姓名</summary>
-    [DisplayName("处理人姓名")]
-    [Description("处理人姓名")]
-    [DataObjectField(false, false, false, 50)]
-    [BindColumn("AssigneeName", "处理人姓名", "")]
-    public String AssigneeName { get => _AssigneeName; set { if (OnPropertyChanging("AssigneeName", value)) { _AssigneeName = value; OnPropertyChanged("AssigneeName"); } } }
-
     private Approval.Data.Entities.TaskStatus _Status;
     /// <summary>状态</summary>
     [DisplayName("状态")]
@@ -160,14 +152,6 @@ public partial class ApprovalTask : ITenantScope
     [DataObjectField(false, false, false, 0)]
     [BindColumn("ApplicantId", "发起人", "")]
     public Int32 ApplicantId { get => _ApplicantId; set { if (OnPropertyChanging("ApplicantId", value)) { _ApplicantId = value; OnPropertyChanged("ApplicantId"); } } }
-
-    private String _ApplicantName = null!;
-    /// <summary>发起人姓名</summary>
-    [DisplayName("发起人姓名")]
-    [Description("发起人姓名")]
-    [DataObjectField(false, false, false, 50)]
-    [BindColumn("ApplicantName", "发起人姓名", "")]
-    public String ApplicantName { get => _ApplicantName; set { if (OnPropertyChanging("ApplicantName", value)) { _ApplicantName = value; OnPropertyChanged("ApplicantName"); } } }
 
     private DateTime _ReceiveTime;
     /// <summary>到达时间</summary>
@@ -222,12 +206,10 @@ public partial class ApprovalTask : ITenantScope
             "Seq" => _Seq,
             "Source" => _Source,
             "AssigneeId" => _AssigneeId,
-            "AssigneeName" => _AssigneeName,
             "Status" => _Status,
             "Comment" => _Comment,
             "Title" => _Title,
             "ApplicantId" => _ApplicantId,
-            "ApplicantName" => _ApplicantName,
             "ReceiveTime" => _ReceiveTime,
             "HandleTime" => _HandleTime,
             "CreateTime" => _CreateTime,
@@ -250,12 +232,10 @@ public partial class ApprovalTask : ITenantScope
                 case "Seq": _Seq = value.ToInt(); break;
                 case "Source": _Source = (Approval.Data.Entities.TaskSource)value.ToInt(); break;
                 case "AssigneeId": _AssigneeId = value.ToInt(); break;
-                case "AssigneeName": _AssigneeName = Convert.ToString(value); break;
                 case "Status": _Status = (Approval.Data.Entities.TaskStatus)value.ToInt(); break;
                 case "Comment": _Comment = Convert.ToString(value); break;
                 case "Title": _Title = Convert.ToString(value); break;
                 case "ApplicantId": _ApplicantId = value.ToInt(); break;
-                case "ApplicantName": _ApplicantName = Convert.ToString(value); break;
                 case "ReceiveTime": _ReceiveTime = value.ToDateTime(); break;
                 case "HandleTime": _HandleTime = value.ToDateTime(); break;
                 case "CreateTime": _CreateTime = value.ToDateTime(); break;
@@ -382,9 +362,6 @@ public partial class ApprovalTask : ITenantScope
         /// <summary>处理人</summary>
         public static readonly Field AssigneeId = FindByName("AssigneeId");
 
-        /// <summary>处理人姓名</summary>
-        public static readonly Field AssigneeName = FindByName("AssigneeName");
-
         /// <summary>状态</summary>
         public static readonly Field Status = FindByName("Status");
 
@@ -396,9 +373,6 @@ public partial class ApprovalTask : ITenantScope
 
         /// <summary>发起人</summary>
         public static readonly Field ApplicantId = FindByName("ApplicantId");
-
-        /// <summary>发起人姓名</summary>
-        public static readonly Field ApplicantName = FindByName("ApplicantName");
 
         /// <summary>到达时间</summary>
         public static readonly Field ReceiveTime = FindByName("ReceiveTime");
@@ -454,9 +428,6 @@ public partial class ApprovalTask : ITenantScope
         /// <summary>处理人</summary>
         public const String AssigneeId = "AssigneeId";
 
-        /// <summary>处理人姓名</summary>
-        public const String AssigneeName = "AssigneeName";
-
         /// <summary>状态</summary>
         public const String Status = "Status";
 
@@ -468,9 +439,6 @@ public partial class ApprovalTask : ITenantScope
 
         /// <summary>发起人</summary>
         public const String ApplicantId = "ApplicantId";
-
-        /// <summary>发起人姓名</summary>
-        public const String ApplicantName = "ApplicantName";
 
         /// <summary>到达时间</summary>
         public const String ReceiveTime = "ReceiveTime";

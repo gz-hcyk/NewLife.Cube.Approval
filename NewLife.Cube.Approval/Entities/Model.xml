@@ -108,7 +108,6 @@
         <Column Name="SearchableKeys" DataType="String" Length="500" Description="可检索字段" />
         <Column Name="PublishTime" DataType="DateTime" Description="发布时间" />
         <Column Name="PublishUserId" DataType="Int32" Description="发布人" />
-        <Column Name="PublishUser" DataType="String" Description="发布人姓名" />
         <Column Name="CreateUser" DataType="String" Description="创建者" Model="False" Category="扩展" />
         <Column Name="CreateUserID" DataType="Int32" Description="创建者" Model="False" Category="扩展" />
         <Column Name="CreateTime" DataType="DateTime" Description="创建时间" Model="False" Category="扩展" />
@@ -131,7 +130,6 @@
         <Column Name="FormVersionId" DataType="Int32" Description="表单版本" />
         <Column Name="Data" DataType="String" Length="-1" Nullable="False" Description="表单值" />
         <Column Name="DataSize" DataType="Int32" Description="字节数" />
-        <Column Name="UpdateUser" DataType="String" Description="最后修改人" />
         <Column Name="UpdateUserID" DataType="Int32" Description="最后修改人" />
         <Column Name="UpdateTime" DataType="DateTime" Description="最后修改时间" />
       </Columns>
@@ -180,7 +178,6 @@
         <Column Name="NodeCount" DataType="Int32" Description="节点数" />
         <Column Name="PublishTime" DataType="DateTime" Description="发布时间" />
         <Column Name="PublishUserId" DataType="Int32" Description="发布人" />
-        <Column Name="PublishUser" DataType="String" Description="发布人姓名" />
         <Column Name="CreateUser" DataType="String" Description="创建者" Model="False" Category="扩展" />
         <Column Name="CreateUserID" DataType="Int32" Description="创建者" Model="False" Category="扩展" />
         <Column Name="CreateTime" DataType="DateTime" Description="创建时间" Model="False" Category="扩展" />
@@ -245,13 +242,10 @@
         <Column Name="ProcessName" DataType="String" Length="100" Nullable="False" Description="流程名" />
         <Column Name="CategoryId" DataType="Int32" Description="分类" />
         <Column Name="UserId" DataType="Int32" Description="发起人" />
-        <Column Name="UserName" DataType="String" Nullable="False" Description="发起人姓名" />
         <Column Name="DepartmentId" DataType="Int32" Description="发起部门" />
         <Column Name="DepartmentName" DataType="String" Length="100" Description="部门名" />
         <Column Name="SubjectUserId" DataType="Int32" Description="业务主体。学生" />
-        <Column Name="SubjectName" DataType="String" Nullable="False" Description="业务主体姓名" />
         <Column Name="ProxyUserId" DataType="Int32" Description="代发人。0表示本人发起" />
-        <Column Name="ProxyName" DataType="String" Description="代发人姓名" />
         <Column Name="CounselorUserId" DataType="Int32" Description="该生辅导员。存在业务单上" />
         <Column Name="Status" DataType="Int32" Description="状态" Type="Approval.Data.Entities.InstanceStatus" />
         <Column Name="Round" DataType="Int32" Description="轮次" />
@@ -292,12 +286,10 @@
         <Column Name="Seq" DataType="Int32" Description="顺序号" />
         <Column Name="Source" DataType="Int32" Description="来源" Type="Approval.Data.Entities.TaskSource" />
         <Column Name="AssigneeId" DataType="Int32" Description="处理人" />
-        <Column Name="AssigneeName" DataType="String" Nullable="False" Description="处理人姓名" />
         <Column Name="Status" DataType="Int32" Description="状态" Type="Approval.Data.Entities.TaskStatus" />
         <Column Name="Comment" DataType="String" Length="2000" Description="意见" />
         <Column Name="Title" DataType="String" Master="True" Length="200" Nullable="False" Description="标题" />
         <Column Name="ApplicantId" DataType="Int32" Description="发起人" />
-        <Column Name="ApplicantName" DataType="String" Nullable="False" Description="发起人姓名" />
         <Column Name="ReceiveTime" DataType="DateTime" Description="到达时间" />
         <Column Name="HandleTime" DataType="DateTime" Description="处理时间" />
         <Column Name="CreateTime" DataType="DateTime" Description="创建时间" />
@@ -322,7 +314,6 @@
         <Column Name="Action" DataType="String" Length="20" Nullable="False" Description="动作" />
         <Column Name="ActionName" DataType="String" Length="20" Nullable="False" Description="动作名称" />
         <Column Name="OperatorId" DataType="Int32" Description="操作人" />
-        <Column Name="OperatorName" DataType="String" Nullable="False" Description="操作人姓名" />
         <Column Name="OperatorDept" DataType="String" Length="100" Description="操作人部门" />
         <Column Name="Comment" DataType="String" Length="2000" Description="意见" />
         <Column Name="FromStatus" DataType="Int32" Description="动作前状态" />

@@ -106,14 +106,6 @@ public partial class ApprovalInstance : ITenantScope
     [BindColumn("UserId", "发起人", "")]
     public Int32 UserId { get => _UserId; set { if (OnPropertyChanging("UserId", value)) { _UserId = value; OnPropertyChanged("UserId"); } } }
 
-    private String _UserName = null!;
-    /// <summary>发起人姓名</summary>
-    [DisplayName("发起人姓名")]
-    [Description("发起人姓名")]
-    [DataObjectField(false, false, false, 50)]
-    [BindColumn("UserName", "发起人姓名", "")]
-    public String UserName { get => _UserName; set { if (OnPropertyChanging("UserName", value)) { _UserName = value; OnPropertyChanged("UserName"); } } }
-
     private Int32 _DepartmentId;
     /// <summary>发起部门</summary>
     [DisplayName("发起部门")]
@@ -138,14 +130,6 @@ public partial class ApprovalInstance : ITenantScope
     [BindColumn("SubjectUserId", "业务主体。学生", "")]
     public Int32 SubjectUserId { get => _SubjectUserId; set { if (OnPropertyChanging("SubjectUserId", value)) { _SubjectUserId = value; OnPropertyChanged("SubjectUserId"); } } }
 
-    private String _SubjectName = null!;
-    /// <summary>业务主体姓名</summary>
-    [DisplayName("业务主体姓名")]
-    [Description("业务主体姓名")]
-    [DataObjectField(false, false, false, 50)]
-    [BindColumn("SubjectName", "业务主体姓名", "")]
-    public String SubjectName { get => _SubjectName; set { if (OnPropertyChanging("SubjectName", value)) { _SubjectName = value; OnPropertyChanged("SubjectName"); } } }
-
     private Int32 _ProxyUserId;
     /// <summary>代发人。0表示本人发起</summary>
     [DisplayName("代发人")]
@@ -153,14 +137,6 @@ public partial class ApprovalInstance : ITenantScope
     [DataObjectField(false, false, false, 0)]
     [BindColumn("ProxyUserId", "代发人。0表示本人发起", "")]
     public Int32 ProxyUserId { get => _ProxyUserId; set { if (OnPropertyChanging("ProxyUserId", value)) { _ProxyUserId = value; OnPropertyChanged("ProxyUserId"); } } }
-
-    private String? _ProxyName;
-    /// <summary>代发人姓名</summary>
-    [DisplayName("代发人姓名")]
-    [Description("代发人姓名")]
-    [DataObjectField(false, false, true, 50)]
-    [BindColumn("ProxyName", "代发人姓名", "")]
-    public String? ProxyName { get => _ProxyName; set { if (OnPropertyChanging("ProxyName", value)) { _ProxyName = value; OnPropertyChanged("ProxyName"); } } }
 
     private Int32 _CounselorUserId;
     /// <summary>该生辅导员。存在业务单上</summary>
@@ -325,13 +301,10 @@ public partial class ApprovalInstance : ITenantScope
             "ProcessName" => _ProcessName,
             "CategoryId" => _CategoryId,
             "UserId" => _UserId,
-            "UserName" => _UserName,
             "DepartmentId" => _DepartmentId,
             "DepartmentName" => _DepartmentName,
             "SubjectUserId" => _SubjectUserId,
-            "SubjectName" => _SubjectName,
             "ProxyUserId" => _ProxyUserId,
-            "ProxyName" => _ProxyName,
             "CounselorUserId" => _CounselorUserId,
             "Status" => _Status,
             "Round" => _Round,
@@ -365,13 +338,10 @@ public partial class ApprovalInstance : ITenantScope
                 case "ProcessName": _ProcessName = Convert.ToString(value); break;
                 case "CategoryId": _CategoryId = value.ToInt(); break;
                 case "UserId": _UserId = value.ToInt(); break;
-                case "UserName": _UserName = Convert.ToString(value); break;
                 case "DepartmentId": _DepartmentId = value.ToInt(); break;
                 case "DepartmentName": _DepartmentName = Convert.ToString(value); break;
                 case "SubjectUserId": _SubjectUserId = value.ToInt(); break;
-                case "SubjectName": _SubjectName = Convert.ToString(value); break;
                 case "ProxyUserId": _ProxyUserId = value.ToInt(); break;
-                case "ProxyName": _ProxyName = Convert.ToString(value); break;
                 case "CounselorUserId": _CounselorUserId = value.ToInt(); break;
                 case "Status": _Status = (Approval.Data.Entities.InstanceStatus)value.ToInt(); break;
                 case "Round": _Round = value.ToInt(); break;
@@ -530,9 +500,6 @@ public partial class ApprovalInstance : ITenantScope
         /// <summary>发起人</summary>
         public static readonly Field UserId = FindByName("UserId");
 
-        /// <summary>发起人姓名</summary>
-        public static readonly Field UserName = FindByName("UserName");
-
         /// <summary>发起部门</summary>
         public static readonly Field DepartmentId = FindByName("DepartmentId");
 
@@ -542,14 +509,8 @@ public partial class ApprovalInstance : ITenantScope
         /// <summary>业务主体。学生</summary>
         public static readonly Field SubjectUserId = FindByName("SubjectUserId");
 
-        /// <summary>业务主体姓名</summary>
-        public static readonly Field SubjectName = FindByName("SubjectName");
-
         /// <summary>代发人。0表示本人发起</summary>
         public static readonly Field ProxyUserId = FindByName("ProxyUserId");
-
-        /// <summary>代发人姓名</summary>
-        public static readonly Field ProxyName = FindByName("ProxyName");
 
         /// <summary>该生辅导员。存在业务单上</summary>
         public static readonly Field CounselorUserId = FindByName("CounselorUserId");
@@ -638,9 +599,6 @@ public partial class ApprovalInstance : ITenantScope
         /// <summary>发起人</summary>
         public const String UserId = "UserId";
 
-        /// <summary>发起人姓名</summary>
-        public const String UserName = "UserName";
-
         /// <summary>发起部门</summary>
         public const String DepartmentId = "DepartmentId";
 
@@ -650,14 +608,8 @@ public partial class ApprovalInstance : ITenantScope
         /// <summary>业务主体。学生</summary>
         public const String SubjectUserId = "SubjectUserId";
 
-        /// <summary>业务主体姓名</summary>
-        public const String SubjectName = "SubjectName";
-
         /// <summary>代发人。0表示本人发起</summary>
         public const String ProxyUserId = "ProxyUserId";
-
-        /// <summary>代发人姓名</summary>
-        public const String ProxyName = "ProxyName";
 
         /// <summary>该生辅导员。存在业务单上</summary>
         public const String CounselorUserId = "CounselorUserId";

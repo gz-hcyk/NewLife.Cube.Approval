@@ -60,7 +60,6 @@ public partial class ApprovalFormDefinition : Entity<ApprovalFormDefinition>
         var count = FormSchema.Check(draft.Schema);
         var next = ApprovalFormVersion.FindAllByFormId(Id).Max(e => e.Version) + 1;
         if (next < 1) next = 1;
-        var publisher = User.FindByID(userId);
 
         if (PublishedVersionId > 0)
         {
@@ -78,7 +77,6 @@ public partial class ApprovalFormDefinition : Entity<ApprovalFormDefinition>
         draft.SearchableKeys = FormSchema.SearchableKeys(draft.Schema);
         draft.PublishTime = DateTime.Now;
         draft.PublishUserId = userId;
-        draft.PublishUser = publisher?.DisplayName.IsNullOrEmpty() == false ? publisher.DisplayName : publisher?.Name;
         draft.Update();
 
         PublishedVersionId = draft.Id;

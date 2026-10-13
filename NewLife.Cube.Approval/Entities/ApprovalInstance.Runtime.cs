@@ -96,13 +96,10 @@ public partial class ApprovalInstance
                 ProcessName = process.Name,
                 CategoryId = process.CategoryId,
                 UserId = op.ID,
-                UserName = Display(op),
                 DepartmentId = op.DepartmentID,
                 DepartmentName = dept?.Name,
                 SubjectUserId = subject.ID,
-                SubjectName = subjectName,
                 ProxyUserId = proxy?.ID ?? 0,
-                ProxyName = proxyName,
                 CounselorUserId = counselorId,
                 Status = InstanceStatus.Running,
                 Round = 1,
@@ -119,7 +116,6 @@ public partial class ApprovalInstance
                 FormVersionId = version.FormVersionId,
                 Data = body,
                 DataSize = System.Text.Encoding.UTF8.GetByteCount(body),
-                UpdateUser = Display(op),
                 UpdateUserID = op.ID,
                 UpdateTime = now,
             }.Insert();
@@ -226,7 +222,7 @@ public partial class ApprovalInstance
             inst.Version++;
             inst.Update();
             var node = ApprovalNode.FindAllByProcessVersionId(inst.ProcessVersionId).FirstOrDefault(e => e.NodeKey == task.NodeKey);
-            var note = $"已退回发起人：{inst.UserName}。{comment}";
+            var note = $"已退回发起人：{UserDisplay.Name(inst.UserId)}。{comment}";
             WriteHistory(inst, task, node, "reject", "驳回", note, before, inst.Status, requestId, clientIp, op, now);
             ApprovalHost.Notify(inst.Id);
             result = inst;
@@ -744,11 +740,9 @@ public partial class ApprovalInstance
             Seq = seq,
             Source = source,
             AssigneeId = user.ID,
-            AssigneeName = Display(user),
             Status = TaskStatus.Pending,
             Title = inst.Title,
             ApplicantId = inst.UserId,
-            ApplicantName = inst.UserName,
             ReceiveTime = now,
             CreateTime = now,
             UpdateTime = now,
@@ -904,7 +898,6 @@ public partial class ApprovalInstance
         var row = ApprovalFormData.FindById(inst.Id) ?? throw new ApprovalException(4041, "表单值不存在");
         row.Data = body;
         row.DataSize = System.Text.Encoding.UTF8.GetByteCount(body);
-        row.UpdateUser = Display(op);
         row.UpdateUserID = op.ID;
         row.UpdateTime = now;
         row.Update();
@@ -1090,7 +1083,6 @@ public partial class ApprovalInstance
             Action = action,
             ActionName = actionName,
             OperatorId = op.ID,
-            OperatorName = Display(op),
             OperatorDept = dept?.Name,
             Comment = comment,
             FromStatus = (Int32)from,
@@ -1108,8 +1100,7 @@ public partial class ApprovalInstance
         return prefix + (count + 1).ToString("0000");
     }
 
-    private static String Display(User user) =>
-        user.DisplayName.IsNullOrEmpty() ? user.Name : user.DisplayName;
+    private static String Display(User user) => UserDisplay.Name(user);
 
     private static void Run(Action action)
     {
