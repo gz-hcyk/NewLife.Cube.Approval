@@ -37,8 +37,10 @@ public sealed class ApprovalWorld : IDisposable
 
     private String Conn(String file)
     {
+        // BusyTimeout 不能写成 "Busy Timeout"：System.Data.SQLite 对带空格的关键字静默忽略，
+        // 退化成约 3 秒默认忙等，宿主启动期（建表/扫菜单）的写锁会让首条写请求直接 database is locked。
         var path = Path.Combine(Root, file).Replace('\\', '/');
-        return $"Data Source={path};Provider=sqlite;Journal Mode=Wal;Busy Timeout=30000";
+        return $"Data Source={path};Provider=sqlite;Journal Mode=Wal;BusyTimeout=30000";
     }
 
     private static void Register(String name, String connStr)

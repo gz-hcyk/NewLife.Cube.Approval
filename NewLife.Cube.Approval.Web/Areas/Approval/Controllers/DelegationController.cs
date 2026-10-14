@@ -13,13 +13,16 @@ namespace Approval.Web.Areas.Approval.Controllers;
 /// 委托代理。委托关系用魔方内置的 PrincipalAgent（框架自带控制器管不到审批的范围语义），
 /// 这里只做审批侧的范围选择、我的委托展示和停用。
 /// </summary>
+/// <remarks>
+/// 与办理类动作同一授权模型：只校验登录，数据边界在实体层——我的委托按委托人过滤、
+/// 委托给我的按代理人过滤，停用仅限委托人本人，越权由 ApprovalException 把守。
+/// </remarks>
 [DisplayName("委托代理")]
 [Menu(15, true, Icon = "user-secret", Mode = MenuModes.Admin | MenuModes.Tenant)]
 [ApprovalArea]
 public class DelegationController : ControllerBaseX
 {
     /// <summary>我的委托。我委托出去的，和别人委托给我的。含范围明细和是否正在生效。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("我的委托")]
     [HttpGet]
     public ActionResult List()
@@ -39,7 +42,6 @@ public class DelegationController : ControllerBaseX
     }
 
     /// <summary>可选委托范围。流程与分类两份名单，新增委托页下拉用。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("委托范围")]
     [HttpGet]
     public ActionResult Options()
@@ -59,7 +61,6 @@ public class DelegationController : ControllerBaseX
     }
 
     /// <summary>新增委托。范围为空表示全部待办；同一代理人只保留一条启用中的委托。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("新增委托")]
     [HttpPost]
     public ActionResult Add([FromBody] DelegationInput input)
@@ -83,7 +84,6 @@ public class DelegationController : ControllerBaseX
     }
 
     /// <summary>停用委托。只有委托人可以停用；停用后范围行保留，再次启用时仍然有效。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("停用委托")]
     [HttpPost]
     public ActionResult Cancel([FromBody] DelegationCancelInput input)

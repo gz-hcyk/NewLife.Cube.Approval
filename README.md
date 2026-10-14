@@ -29,10 +29,10 @@ dotnet pack Approval.sln -c Release -o artifacts
 
 ```json
 "ConnectionStrings": {
-  "Membership": "Data Source=Data/Membership.db;Provider=sqlite;Journal Mode=Wal;Busy Timeout=30000",
-  "Cube": "Data Source=Data/Cube.db;Provider=sqlite;Journal Mode=Wal;Busy Timeout=30000",
-  "Log": "Data Source=Data/Log.db;Provider=sqlite;Journal Mode=Wal;Busy Timeout=30000",
-  "Approval": "Data Source=Data/Membership.db;Provider=sqlite;Journal Mode=Wal;Busy Timeout=30000"
+  "Membership": "Data Source=Data/Membership.db;Provider=sqlite;Journal Mode=Wal;BusyTimeout=30000",
+  "Cube": "Data Source=Data/Cube.db;Provider=sqlite;Journal Mode=Wal;BusyTimeout=30000",
+  "Log": "Data Source=Data/Log.db;Provider=sqlite;Journal Mode=Wal;BusyTimeout=30000",
+  "Approval": "Data Source=Data/Membership.db;Provider=sqlite;Journal Mode=Wal;BusyTimeout=30000"
 }
 ```
 

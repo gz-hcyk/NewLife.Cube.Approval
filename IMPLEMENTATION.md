@@ -343,3 +343,30 @@ npm run dev
 框架行为坑（实证）：`PrincipalAgent.GetAllValidByAgentId` **只按 `Enable` 过滤，不过滤 `Times` 与 `Expire`**（实体源码不在 Cube 仓库 master，字段语义以 XML 注释为准）。审批侧 `ValidAgents` 自行补判：`Enable && Times != 0 && (Expire 无限制 || Expire >= now)`；「无限制」用 `Expire.Year < 1900` 的哨兵值（`DateTime.MinValue`）表达。
 
 测试：`Round12Tests`（6 个）覆盖按流程范围展开与办理（含历史代办痕迹、陌生人 4031、范围外 4031）、按分类范围覆盖全部流程、一次委托一次办理（扣减后失效、委托人仍可办）、过期与停用失效（仅委托人可停用、范围行保留）、抄送与无范围全委、新增校验（重复/自委托/停用用户）。全量 `dotnet test` 53 个，非 HTTP 48/48 通过；5 个 `HttpRuntimeTests` 失败为存量抖动——干净树（stash 全部改动）上同样 5/5 复现 `SQLite database is locked`，与本次改动无关。
+
+## 第 14 轮：办理权限默认放行
+
+日期：2026-10-14。审计审批系统的权限位模型，发现「必备权限全部单独授权」的现状与业务实质相反，按用户确认的两项决策改造。
+
+**问题**：办理类端点（发起 16/撤回 512/待办 1024/已办 2048/抄送 4096/查看 128 等）全部挂着 `[EntityAuthorize]` 位，而 `GrantAdmin` 只把位授给管理员角色——普通用户调自己的 `/Inbox` 直接 403；数据边界其实都在实体层（办理人、发起人、参与人、委托关系，越权抛 `ApprovalException` 4031），位校验纯属重复且有害。样例工程被迫把演示账号挂在管理员角色上，注释原话「只为示例里能登录办理」。另一处错位：`Candidates`（选人）与查看单据共用 128 位，但选人返回的是全量用户目录，数据面远超「查看一张单据」。
+
+**决策（用户确认）**：① 办理端点去掉位校验，只校验登录（`Current()` 已保证未登录 401）；② `Candidates` 拆独立高位 32768「选人」，按需授予，与查看单据（128）脱钩。
+
+实现清单：
+
+1. **三层授权模型**（`RuntimeController` 类头 remarks 固化，防回退）：
+   - 办理类（发起/草稿/重提/撤回/同意/驳回/转办/加签/待办/已办/抄送/查看/检索）只校验登录，真实边界在实体层，越权由 `ApprovalException` 4031 把守；
+   - 「选人」32768 是特权位：`Candidates` 返回全量用户目录，数据面不限，按需授予；
+   - 「监控」16384 是特权位：可见范围超出参与关系，按需授予。
+   - 设计类端点（`ApprovalAdmin` 表单/流程，Detail/32/16）不在此列，仍按菜单位授权。
+2. **`RuntimeController`**：删掉全部办理类 `[EntityAuthorize]`（12+ 处），仅保留 `Candidates` 的 32768 与 `Monitor` 的 16384。
+3. **`DelegationController`**：删掉 4 个 `[EntityAuthorize((PermissionFlags)16)]`（委托的 List/Options/Add/Cancel 全部限定在本人关系内，`ApprovalAgent` 层把守）。
+4. **`ApprovalExtensions.GrantAdmin` 零改动**：按位或运算授予，新位自动覆盖。
+5. **匿名与缺位行为区分**（测试固话）：匿名请求由 `ControllerBaseX.OnActionExecuting` 抛 `ApiException(403)`——HTTP 200 + body `code:403`；已登录但缺特权位由 `EntityAuthorizeAttribute` 直接返 HTTP 403。两者语义不同，测试分别用 body 码与状态码断言。
+6. **存量角色迁移提示**：原先靠 128 位选人的角色，需改授 32768；`GrantAdmin`（管理员）两条都已覆盖，无需手动迁移。样例工程演示账号挂管理员角色的理由从「能登录办理」收窄为「能选人与看监控」，注释已更新。
+
+测试：`Handle_endpoints_need_no_bits_but_monitor_and_candidates_do`（HTTP）——零授权角色/用户走完 Me/Inbox/Start/Agree 全 Ok，Candidates/Monitor 均为 403；再用反射断言授权声明收敛：`RuntimeController` 只剩 `{16384, 32768}`、`DelegationController` 一个不挂（菜单权限由这些特性生成，查特性比查菜单行确定——UseCube 菜单扫描是异步的，中途查会撞扫描写锁）。
+
+**环境坑修复（本轮最大收获，根因级）**：`HttpRuntimeTests` 长期「偶发 5 个失败 `SQLite database is locked`」（第 13 轮记为存量抖动）的真因是**连接字符串关键字拼写**——`ApprovalWorld.Conn()` 写的是 `Busy Timeout=30000`（带空格），System.Data.SQLite 对带空格的关键字**静默忽略**，退化成约 3 秒默认忙等；宿主启动期（建表/扫菜单）持写锁超过 3 秒，首条写请求（登录）立刻失败。实测对照：带空格持锁 8 秒 → 3.2 秒即 `database is locked`；`BusyTimeout=30000`（无空格）→ 等满 8.5 秒锁释放后写入成功。已修正 `ApprovalWorld.cs`、`samples/Approval.Host/appsettings.json`、`README.md` 三处。
+
+**干净树对照（项目既定判定法）**：stash 全部改动后原样跑全量，53 个测试仍有 2 个 `HttpRuntimeTests` 失败，错误正是 `database is locked`（SQLite Busy）——证明全量并发下的 SQLite 抖动是存量环境问题，与本次改动无关。修复后本机判定：非 HTTP 48/48 通过、`HttpRuntimeTests` 6/6 通过（含本轮新增用例）；全量一把跑仍可能被另一种存量抖动（`attempt to write a readonly database` 瞬时窗口 + 验证码风险自适应级联）击中，第 13 轮之前即有记录，根因未定位，表现为受害者不固定（两次全量分别击中 Round12 与 ReleaseGate 各 1 个）。

@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Net.Http.Headers;
+using System.Reflection;
+using Approval.Web.Areas.Approval.Controllers;
 using Microsoft.AspNetCore.Hosting;
 using Xunit;
 using System.Net.Http.Json;
@@ -273,11 +275,12 @@ public class HttpRuntimeTests
 
         await using var factory = new ApprovalApiFactory(_world);
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        // 办理类端点只校验登录：匿名请求由 ControllerBaseX 拦下，HTTP 200 + body 403（认证失败）
         var anon = await client.GetAsync("/api/Approval/Runtime/View?instanceId=1");
-        Assert.True((Int32)anon.StatusCode == 401 || (Int32)anon.StatusCode == 403, ((Int32)anon.StatusCode).ToString());
+        var anonBody = JsonNode.Parse(await anon.Content.ReadAsStringAsync())!;
+        Assert.Equal(403, anonBody["code"]!.GetValue<Int32>());
 
-        _ = await Login(client, owner.Name, "pass1234");
-        GrantBits(role, (PermissionFlags)(16 | 32 | 128 | 1024));
+        // 角色零授权即可办理自己的单：菜单位不再把守办理类动作，边界在实体层
         var ownerToken = await Login(client, owner.Name, "pass1234");
         var approverToken = await Login(client, approver.Name, "pass1234");
         var strangerToken = await Login(client, stranger.Name, "pass1234");
@@ -322,6 +325,54 @@ public class HttpRuntimeTests
         Assert.Contains("days", approverView["formData"]!.GetValue<String>());
         var ownerSearch = Ok(await Get(client, "/api/Approval/Runtime/Search?field=reason&keyword=" + reason, ownerToken));
         Assert.Contains(instanceId, ownerSearch.ToJsonString());
+    }
+
+    [Fact]
+    [DisplayName("办理端点只校验登录，菜单只声明监控与选人两个特权位")]
+    public async Task Handle_endpoints_need_no_bits_but_monitor_and_candidates_do()
+    {
+        var mark = Guid.NewGuid().ToString("N")[..8];
+        var role = Role.Add("审批系统-" + mark, true, "HTTP 切片");
+        var user = User.Add("http-stu-" + mark, "pass1234", role.ID, "学生乙");
+        user.Enable = true;
+        user.Update();
+
+        var process = Publish(mark);
+        await using var factory = new ApprovalApiFactory(_world);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        // 先打一次登录，让 UseCube 扫完菜单（异步扫描）
+        _ = await Login(client, user.Name, "pass1234");
+
+        var token = await Login(client, user.Name, "pass1234");
+
+        // 零授权：办理类端点登录即可用，数据边界在实体层
+        _ = Ok(await Get(client, "/api/Approval/Runtime/Me", token));
+        _ = Ok(await Get(client, "/api/Approval/Runtime/Inbox", token));
+        var started = Ok(await Send(client, HttpMethod.Post, "/api/Approval/Runtime/Start", token, new
+        {
+            processId = process.Id,
+            proxy = false,
+            data = Form(user.ID, user.ID),
+            requestId = "perm-start-" + mark,
+        }));
+        var task = Pending(started).Single();
+        _ = Ok(await Send(client, HttpMethod.Post, "/api/Approval/Runtime/Agree", token, new
+        {
+            taskId = task["id"]!.GetValue<String>(),
+            comment = "同意",
+            requestId = "perm-agree-" + mark,
+            instanceVersion = started["version"]!.GetValue<Int32>(),
+        }));
+
+        // 零授权：特权位 403，由授权特性把守（区别于匿名的 body 403）
+        await Denied(client, "/api/Approval/Runtime/Candidates", token);
+        await Denied(client, "/api/Approval/Runtime/Monitor", token);
+
+        // 授权声明收敛：办理控制器只剩监控与选人两个特权位，委托控制器一个不挂。
+        // 菜单权限由这些特性生成，查特性比查菜单行确定（UseCube 扫描是异步的，中途查会撞扫描写锁）。
+        Assert.Equal(new[] { 16384, 32768 }, Bits(typeof(RuntimeController)));
+        Assert.Empty(Bits(typeof(DelegationController)));
     }
 
     [Fact]
@@ -459,24 +510,17 @@ public class HttpRuntimeTests
         Assert.Contains(affair["processes"]!.AsArray(), f => f!["code"]!.GetValue<String>() == "leave");
     }
 
-    private static void GrantBits(Role role, PermissionFlags flags)
-    {
-        var menus = Menu.FindAll();
-        var hits = menus.Where(m =>
-        {
-            var text = (m.FullName ?? "") + " " + (m.Url ?? "") + " " + (m.Name ?? "");
-            return text.Contains("Runtime", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("Approval", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("审批");
-        }).ToList();
-        if (hits.Count == 0) throw new InvalidOperationException("没有审批菜单");
-        foreach (var menu in hits) role.Set(menu.ID, flags);
-        role.Update();
-        Role.Meta.Cache?.Clear("grant8", true);
-        Role.Meta.SingleCache.Clear("grant8");
-        User.Meta.Cache?.Clear("grant8", true);
-        User.Meta.SingleCache.Clear("grant8");
-    }
+    /// <summary>取控制器上全部授权特性声明的权限位（菜单权限即由这些特性生成，查特性比查菜单行确定）。</summary>
+    private static Int32[] Bits(Type controller) => controller
+        .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+        .SelectMany(m => m.GetCustomAttributesData())
+        .Where(d => d.AttributeType == typeof(NewLife.Cube.EntityAuthorizeAttribute))
+        .SelectMany(d => d.ConstructorArguments)
+        // 枚举实参装框后是基础类型（PermissionFlags 底层为 UInt32），不能按枚举类型筛
+        .Select(a => Convert.ToInt32(a.Value))
+        .Distinct()
+        .OrderBy(x => x)
+        .ToArray();
 
     private static void Grant(Role role)
     {
@@ -499,10 +543,13 @@ public class HttpRuntimeTests
             role.Set(menu.ID, flags);
         // Set 只改内存里的权限字典，要保存后鉴权重新加载才能看见。
         role.Update();
+        // 与 Cube RoleController 保存权限后的清法保持一致：Meta.Cache/SingleCache 之外，Meta.Session 才是宿主请求链路实际命中的缓存
         Role.Meta.Cache?.Clear("grant", true);
         Role.Meta.SingleCache.Clear("grant");
+        Role.Meta.Session.ClearCache("grant", true);
         User.Meta.Cache?.Clear("grant", true);
         User.Meta.SingleCache.Clear("grant");
+        User.Meta.Session.ClearCache("grant", true);
     }
 
     private static void GrantFull(Role role)
@@ -532,8 +579,10 @@ public class HttpRuntimeTests
         role.Update();
         Role.Meta.Cache?.Clear("grant", true);
         Role.Meta.SingleCache.Clear("grant");
+        Role.Meta.Session.ClearCache("grant", true);
         User.Meta.Cache?.Clear("grant", true);
         User.Meta.SingleCache.Clear("grant");
+        User.Meta.Session.ClearCache("grant", true);
     }
 
     private static ApprovalProcess Publish(String mark)
@@ -603,6 +652,15 @@ public class HttpRuntimeTests
     {
         Assert.True(body["code"]!.GetValue<Int32>() == 0, body.ToJsonString());
         return body["data"]!;
+    }
+
+    /// <summary>特权位未授权：授权特性直接返回 HTTP 403，不进业务体。</summary>
+    private static async Task Denied(HttpClient client, String url, String token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await client.SendAsync(request);
+        Assert.Equal(403, (Int32)response.StatusCode);
     }
 
     private static IEnumerable<JsonNode> Pending(JsonNode data) =>

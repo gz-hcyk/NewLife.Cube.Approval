@@ -9,13 +9,20 @@ using XCode.Membership;
 namespace Approval.Web.Areas.Approval.Controllers;
 
 /// <summary>审批运行。发起、同意、驳回都调用实例上的业务方法。</summary>
+/// <remarks>
+/// 授权模型（三层，别再给办理动作加回权限位）：
+/// 1. 办理类（发起/草稿/撤回/同意/驳回/转办/加签/待办/已办/抄送/查看/检索）只校验登录，
+///    真实边界在实体层——办理人、发起人、参与人、委托关系，越权由 ApprovalException 4031 把守；
+/// 2. 「选人」32768 是特权位：Candidates 返回全量用户目录，数据面不限，按需授予；
+/// 3. 「监控」16384 是特权位：可见范围超出参与关系，按需授予。
+/// 设计类端点（ApprovalAdmin 表单/流程）不在此列，仍按菜单位授权。
+/// </remarks>
 [DisplayName("审批办理")]
 [Menu(10, true, Icon = "task", Mode = MenuModes.Admin | MenuModes.Tenant)]
 [ApprovalArea]
 public class RuntimeController : ControllerBaseX
 {
     /// <summary>当前登录人。发起页用它锁定本人发起的学生。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("当前用户")]
     [HttpGet]
     public ActionResult Me()
@@ -41,8 +48,12 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>可选用户。本人锁定、代发起选学生、转办选接任人都用这份名单。</summary>
-    [EntityAuthorize((PermissionFlags)128)]
-    [DisplayName("候选人")]
+    /// <remarks>
+    /// 唯一数据面不限办理人的端点（返回全量启用用户目录），因此独立高位 32768「选人」按需授权，
+    /// 不随办理类动作默认放行；与查看单据（128）脱钩。监控（16384）同为特权位。
+    /// </remarks>
+    [EntityAuthorize((PermissionFlags)32768)]
+    [DisplayName("选人")]
     [HttpGet]
     public ActionResult Candidates()
     {
@@ -67,7 +78,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>可以发起的已发布流程。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("可发起流程")]
     [HttpGet]
     public ActionResult Processes()
@@ -93,7 +103,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>发起页要的开始节点字段权限。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("发起表单")]
     [HttpGet]
     public ActionResult StartForm(Int32 processId)
@@ -127,7 +136,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>按可检索字段的值查找实例。关键字按原文包含匹配，例如「回家」能命中「回家一天」。</summary>
-    [EntityAuthorize((PermissionFlags)128)]
     [DisplayName("检索")]
     [HttpGet]
     public ActionResult Search(String? field, String? keyword)
@@ -163,7 +171,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>发起。本人发起与代发起进入同一条已发布流程。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("发起")]
     [HttpPost]
     public ActionResult Start([FromBody] StartInput input)
@@ -191,19 +198,16 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>同意。</summary>
-    [EntityAuthorize((PermissionFlags)32)]
     [DisplayName("同意")]
     [HttpPost]
     public ActionResult Agree([FromBody] HandleInput input) => Handle(input, true);
 
     /// <summary>驳回给发起人。</summary>
-    [EntityAuthorize((PermissionFlags)64)]
     [DisplayName("驳回")]
     [HttpPost]
     public ActionResult Reject([FromBody] HandleInput input) => Handle(input, false);
 
     /// <summary>转办给另一名魔方用户。</summary>
-    [EntityAuthorize((PermissionFlags)256)]
     [DisplayName("转办")]
     [HttpPost]
     public ActionResult Transfer([FromBody] TransferInput input)
@@ -223,7 +227,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>当前用户撤回后的草稿，用来重新提交。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("我的草稿")]
     [HttpGet]
     public ActionResult Drafts()
@@ -254,7 +257,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>撤回后重新提交，轮次加一，流程版本不变。</summary>
-    [EntityAuthorize((PermissionFlags)16)]
     [DisplayName("重新提交")]
     [HttpPost]
     public ActionResult Resubmit([FromBody] ResubmitInput input)
@@ -274,7 +276,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>发起人撤回。代发起时发起人是代发人。</summary>
-    [EntityAuthorize((PermissionFlags)512)]
     [DisplayName("撤回")]
     [HttpPost]
     public ActionResult Withdraw([FromBody] WithdrawInput input)
@@ -294,7 +295,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>向后加签一级。</summary>
-    [EntityAuthorize((PermissionFlags)8192)]
     [DisplayName("加签")]
     [HttpPost]
     public ActionResult AddSign([FromBody] AddSignInput input)
@@ -314,7 +314,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>抄送标为已阅。</summary>
-    [EntityAuthorize((PermissionFlags)4096)]
     [DisplayName("已阅")]
     [HttpPost]
     public ActionResult Read([FromBody] ReadInput input)
@@ -359,7 +358,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>当前用户的待办。</summary>
-    [EntityAuthorize((PermissionFlags)1024)]
     [DisplayName("待办")]
     [HttpGet]
     public ActionResult Inbox()
@@ -376,7 +374,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>当前用户的已办。</summary>
-    [EntityAuthorize((PermissionFlags)2048)]
     [DisplayName("已办")]
     [HttpGet]
     public ActionResult Done()
@@ -393,7 +390,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>当前用户尚未阅读的抄送。</summary>
-    [EntityAuthorize((PermissionFlags)4096)]
     [DisplayName("抄送")]
     [HttpGet]
     public ActionResult Cc()
@@ -410,7 +406,6 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>查看实例、待办和轨迹。不是参与人、也不在本人监控范围内时拒绝。</summary>
-    [EntityAuthorize((PermissionFlags)128)]
     [DisplayName("查看单据")]
     [HttpGet]
     public ActionResult View(Int64 instanceId)
