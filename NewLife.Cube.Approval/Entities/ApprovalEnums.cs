@@ -110,6 +110,18 @@ public enum TaskSource
     ToAdmin = 5,
 }
 
+/// <summary>委托代理范围类型。</summary>
+public enum AgentScope
+{
+    /// <summary>流程。</summary>
+    [Description("流程")]
+    Process = 1,
+
+    /// <summary>分类。</summary>
+    [Description("分类")]
+    Category = 2,
+}
+
 /// <summary>多人处理方式。或签、会签、依次审批都会执行。</summary>
 public enum ApproveMode
 {

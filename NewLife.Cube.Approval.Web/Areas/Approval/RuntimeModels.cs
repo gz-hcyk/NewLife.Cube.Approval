@@ -140,3 +140,39 @@ public class IdInput
     /// <summary>定义编号。</summary>
     public Int32 Id { get; set; }
 }
+
+/// <summary>委托代理。一项范围：scopeType 1=流程、2=分类，scopeId 是对应的编号。空数组表示全部待办。</summary>
+public class DelegationScopeInput
+{
+    /// <summary>范围类型。1=流程 2=分类。</summary>
+    public Int32 ScopeType { get; set; }
+
+    /// <summary>范围编号。</summary>
+    public Int32 ScopeId { get; set; }
+}
+
+/// <summary>新增委托。</summary>
+public class DelegationInput
+{
+    /// <summary>代理人。</summary>
+    public Int32 AgentUserId { get; set; }
+
+    /// <summary>可用次数。-1 无限制，0 立即用完，正数为次数。</summary>
+    public Int32 Times { get; set; } = 1;
+
+    /// <summary>有效期截止。空或早于当前时间的时间戳由服务端兜底为无限制。</summary>
+    public DateTime? Expire { get; set; }
+
+    /// <summary>委托范围。空数组表示全部待办。</summary>
+    public List<DelegationScopeInput>? Scopes { get; set; }
+
+    /// <summary>备注。</summary>
+    public String? Remark { get; set; }
+}
+
+/// <summary>停用委托。</summary>
+public class DelegationCancelInput
+{
+    /// <summary>委托编号。框架 PrincipalAgent.Id。</summary>
+    public Int32 Id { get; set; }
+}

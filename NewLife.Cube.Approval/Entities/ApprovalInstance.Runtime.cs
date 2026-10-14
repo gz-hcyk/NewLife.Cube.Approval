@@ -173,7 +173,9 @@ public partial class ApprovalInstance
             inst.LastActionTime = now;
             inst.Version++;
             inst.Update();
-            WriteHistory(inst, task, node, "agree", "同意", comment,
+            // 代办扣减委托人名下的一次可用次数。跨库不回本事务，放在办理成功之后
+            ApprovalAgent.Consume(task, op.ID);
+            WriteHistory(inst, task, node, "agree", "同意", MarkAgent(comment, task, op),
                 before, inst.Status, requestId, clientIp, op, now);
             ApprovalHost.Notify(inst.Id);
             result = inst;
@@ -222,7 +224,9 @@ public partial class ApprovalInstance
             inst.Version++;
             inst.Update();
             var node = ApprovalNode.FindAllByProcessVersionId(inst.ProcessVersionId).FirstOrDefault(e => e.NodeKey == task.NodeKey);
-            var note = $"已退回发起人：{UserDisplay.Name(inst.UserId)}。{comment}";
+            // 代办扣减委托人名下的一次可用次数。跨库不回本事务，放在办理成功之后
+            ApprovalAgent.Consume(task, op.ID);
+            var note = $"已退回发起人：{UserDisplay.Name(inst.UserId)}。{MarkAgent(comment, task, op)}";
             WriteHistory(inst, task, node, "reject", "驳回", note, before, inst.Status, requestId, clientIp, op, now);
             ApprovalHost.Notify(inst.Id);
             result = inst;
@@ -515,7 +519,9 @@ public partial class ApprovalInstance
 
     private static void EnsureHandle(ApprovalTask task, ApprovalInstance inst, Int32 operatorUserId, Int32 instanceVersion)
     {
-        if (task.AssigneeId != operatorUserId) throw new ApprovalException(4031, "您不是该任务的处理人");
+        // 委托代理：任务归属人把待办委托给办理人时放行，范围由 ApprovalAgent 按流程或分类判定
+        if (task.AssigneeId != operatorUserId && !ApprovalAgent.CanHandle(operatorUserId, task))
+            throw new ApprovalException(4031, "您不是该任务的处理人");
         if (task.Status != TaskStatus.Pending) throw new ApprovalException(4092, "该任务已由他人处理");
         if (inst.Status != InstanceStatus.Running) throw new ApprovalException(4091, "当前状态不允许该操作");
         if (instanceVersion > 0 && inst.Version != instanceVersion)
@@ -1068,6 +1074,14 @@ public partial class ApprovalInstance
             item.UpdateTime = now;
             item.Update();
         }
+    }
+
+    /// <summary>代办时把委托人带进意见，历史才能看出这件事是谁托办的。本人办理时原样返回。</summary>
+    private static String? MarkAgent(String? comment, ApprovalTask task, User op)
+    {
+        if (task.AssigneeId == op.ID) return comment;
+        var note = $"（代{UserDisplay.Name(task.AssigneeId)}办理）";
+        return comment.IsNullOrEmpty() ? note : $"{comment}{note}";
     }
 
     private static void WriteHistory(ApprovalInstance inst, ApprovalTask? task, ApprovalNode? node, String action, String actionName, String? comment, InstanceStatus from, InstanceStatus to, String requestId, String? ip, User op, DateTime now)

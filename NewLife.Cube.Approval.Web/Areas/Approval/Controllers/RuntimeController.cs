@@ -367,7 +367,7 @@ public class RuntimeController : ControllerBaseX
         try
         {
             var user = Current();
-            return Json(0, "ok", ApprovalTask.Inbox(user.ID).Select(DescribeTask), null);
+            return Json(0, "ok", ApprovalTask.Inbox(user.ID).Select(t => DescribeTask(t, user.ID)), null);
         }
         catch (ApprovalException ex)
         {
@@ -384,7 +384,7 @@ public class RuntimeController : ControllerBaseX
         try
         {
             var user = Current();
-            return Json(0, "ok", ApprovalTask.Done(user.ID).Select(DescribeTask), null);
+            return Json(0, "ok", ApprovalTask.Done(user.ID).Select(t => DescribeTask(t, user.ID)), null);
         }
         catch (ApprovalException ex)
         {
@@ -401,7 +401,7 @@ public class RuntimeController : ControllerBaseX
         try
         {
             var user = Current();
-            return Json(0, "ok", ApprovalTask.CcInbox(user.ID).Select(DescribeTask), null);
+            return Json(0, "ok", ApprovalTask.CcInbox(user.ID).Select(t => DescribeTask(t, user.ID)), null);
         }
         catch (ApprovalException ex)
         {
@@ -536,20 +536,27 @@ public class RuntimeController : ControllerBaseX
         });
     }
 
-    private static Object DescribeTask(ApprovalTask t) => new
+    private static Object DescribeTask(ApprovalTask t, Int32 viewerUserId)
     {
-        id = t.Id.ToString(),
-        instanceId = t.InstanceId.ToString(),
-        assigneeId = t.AssigneeId,
-        assigneeName = UserDisplay.Name(t.AssigneeId),
-        nodeKey = t.NodeKey,
-        nodeName = t.NodeName,
-        status = (Int32)t.Status,
-        mode = (Int32)t.Mode,
-        title = t.Title,
-        kind = (Int32)t.Kind,
-        seq = t.Seq,
-        source = (Int32)t.Source,
-        createTime = t.CreateTime.Year < 1900 ? "" : t.CreateTime.ToString("yyyy-MM-dd HH:mm:ss"),
-    };
+        var agentOf = ApprovalAgent.AgentOf(viewerUserId, t);
+        return new
+        {
+            id = t.Id.ToString(),
+            instanceId = t.InstanceId.ToString(),
+            assigneeId = t.AssigneeId,
+            assigneeName = UserDisplay.Name(t.AssigneeId),
+            // 代办视图：大于 0 表示这是委托人转交代办的待办
+            agentOf,
+            agentOfName = agentOf > 0 ? UserDisplay.Name(agentOf) : null,
+            nodeKey = t.NodeKey,
+            nodeName = t.NodeName,
+            status = (Int32)t.Status,
+            mode = (Int32)t.Mode,
+            title = t.Title,
+            kind = (Int32)t.Kind,
+            seq = t.Seq,
+            source = (Int32)t.Source,
+            createTime = t.CreateTime.Year < 1900 ? "" : t.CreateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+        };
+    }
 }

@@ -56,6 +56,20 @@
         <Index Columns="TenantId,Code" Unique="True" />
       </Indexes>
     </Table>
+    <Table Name="ApprovalAgentScope" Description="委托代理范围。框架 PrincipalAgent 委托在审批侧生效的流程或分类，无范围行表示全部">
+      <Columns>
+        <Column Name="Id" DataType="Int32" Identity="True" PrimaryKey="True" Description="编号" />
+        <Column Name="TenantId" DataType="Int32" Description="租户" />
+        <Column Name="AgentId" DataType="Int32" Description="委托编号。框架 PrincipalAgent.Id" />
+        <Column Name="ScopeType" DataType="Int32" Description="范围类型。1=流程 2=分类" />
+        <Column Name="ScopeId" DataType="Int32" Description="范围编号。流程或分类的 Id" />
+      </Columns>
+      <Indexes>
+        <Index Columns="TenantId" />
+        <Index Columns="AgentId" />
+        <Index Columns="AgentId,ScopeType,ScopeId" Unique="True" />
+      </Indexes>
+    </Table>
     <Table Name="ApprovalFieldValue" Description="可检索字段值。按表单版本的 SearchableKeys 为每个实例维护">
       <Columns>
         <Column Name="Id" DataType="Int32" Identity="True" PrimaryKey="True" Description="编号" />

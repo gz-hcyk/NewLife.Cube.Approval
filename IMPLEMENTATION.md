@@ -324,3 +324,22 @@ npm run dev
 遗留列不做迁移删除：XCode `Migration.On` 只加不删，存量库上的旧列静默保留，无读写影响。
 
 测试：全量 `dotnet test` 47 个测试，41 通过；6 个失败（5 个 `HttpRuntimeTests` + `Round1Tests.Sequential_runs_in_order`）在干净树 d1a6352 上逐一复现同样失败（SQLite `database is locked` 环境争用，与本次改动无关）。`Round11Tests` 6/6 通过。
+
+## 第 13 轮：委托代理
+
+日期：2026-10-14。把魔方框架内置的「委托代理」集成进审批引擎：委托人可以把待办委托给他人办理。
+
+开工前三项决策（可平确认）：① 委托关系复用框架实体 `NewLife.Cube.Entity.PrincipalAgent`（Membership 库，Cube 启动自动建表），不另建表；② 待办分发采用「查询时展开」——任务归属（`AssigneeId`）不变，代理人查待办时额外展开委托人转交的部分，撤回、会签、依次审批、监控范围等既有逻辑零改动；③ 委托范围按流程或分类选择，不做的「全部待办」作为无范围行的默认行为保留。
+
+实现清单：
+
+1. **范围载体**：新增 `ApprovalAgentScope`（Approval 库，`AgentId` 指向框架 `PrincipalAgent.Id`，`ScopeType` 1=流程 2=分类，`ScopeId` 为对应编号，`(AgentId,ScopeType,ScopeId)` 联合唯一）。框架实体没有范围字段，范围挂在审批侧；无范围行即全部待办。枚举 `AgentScope` 落在 `ApprovalEnums`。
+2. **核心解析** `ApprovalAgent`（`Approval.Data`）：`ValidAgents`/`MyDelegations`/`DelegationsToMe`、范围命中 `InScope`、办理鉴权 `CanHandle`、待办归属 `AgentOf`、成功后扣减 `Consume`、新增 `Add` 与停用 `Cancel`。新增时校验：不能委托自己、双方须为启用用户、同一对委托人代理人只允许一条还有效的委托（过期与用完的自动让位）、范围须存在且属当前租户；跨库补偿删除（PrincipalAgent 在 Membership、Scope 在 Approval，不能同事务）。
+3. **待办展开**（`ApprovalTask.Biz.cs`）：`Inbox`/`Done`/`CcInbox` 在本人任务之外，附加有效委托人且落在委托范围内的任务。抄送与审批任务一视同仁。
+4. **办理放行与留痕**（`ApprovalInstance.Runtime.cs`）：`EnsureHandle` 在办理人不是任务归属人时按委托放行（否则仍 4031）；`Agree`/`Reject` 成功后 `Consume` 扣减一次可用次数（`Times` 为 -1 无限制不扣，扣到 0 后自然失效），历史意见经 `MarkAgent` 追加「（代XXX办理）」，`OperatorId` 仍记实际办理人。撤回、转办、加签不变（这些动作的办理人必须原本就是任务归属人）。
+5. **Web 接口**：新增 `DelegationController`（Area=Approval，菜单 15）：`List`（我委托的 + 委托我的，含范围明细与是否生效）、`Options`（流程与分类名单）、`Add`、`Cancel`（仅委托人可停用）。`RuntimeController.DescribeTask` 增加 `agentOf`/`agentOfName`，前端可区分「我的待办」与「代办的待办」，既有键不变。
+6. **核心包新增对 `NewLife.Cube` 的 PackageReference**：委托实体在框架侧，宿主本就依赖 Cube，无新增负担。
+
+框架行为坑（实证）：`PrincipalAgent.GetAllValidByAgentId` **只按 `Enable` 过滤，不过滤 `Times` 与 `Expire`**（实体源码不在 Cube 仓库 master，字段语义以 XML 注释为准）。审批侧 `ValidAgents` 自行补判：`Enable && Times != 0 && (Expire 无限制 || Expire >= now)`；「无限制」用 `Expire.Year < 1900` 的哨兵值（`DateTime.MinValue`）表达。
+
+测试：`Round12Tests`（6 个）覆盖按流程范围展开与办理（含历史代办痕迹、陌生人 4031、范围外 4031）、按分类范围覆盖全部流程、一次委托一次办理（扣减后失效、委托人仍可办）、过期与停用失效（仅委托人可停用、范围行保留）、抄送与无范围全委、新增校验（重复/自委托/停用用户）。全量 `dotnet test` 53 个，非 HTTP 48/48 通过；5 个 `HttpRuntimeTests` 失败为存量抖动——干净树（stash 全部改动）上同样 5/5 复现 `SQLite database is locked`，与本次改动无关。

@@ -15,6 +15,8 @@
 
   <ItemGroup>
     <PackageReference Include="NewLife.XCode" Version="12.2.2026.901" />
+    <!-- 委托代理复用框架内置的 NewLife.Cube.Entity.PrincipalAgent（Membership 库，Cube 启动自动建表） -->
+    <PackageReference Include="NewLife.Cube" Version="6.15.2026.901" />
   </ItemGroup>
 
   <ItemGroup>
