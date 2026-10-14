@@ -370,3 +370,32 @@ npm run dev
 **环境坑修复（本轮最大收获，根因级）**：`HttpRuntimeTests` 长期「偶发 5 个失败 `SQLite database is locked`」（第 13 轮记为存量抖动）的真因是**连接字符串关键字拼写**——`ApprovalWorld.Conn()` 写的是 `Busy Timeout=30000`（带空格），System.Data.SQLite 对带空格的关键字**静默忽略**，退化成约 3 秒默认忙等；宿主启动期（建表/扫菜单）持写锁超过 3 秒，首条写请求（登录）立刻失败。实测对照：带空格持锁 8 秒 → 3.2 秒即 `database is locked`；`BusyTimeout=30000`（无空格）→ 等满 8.5 秒锁释放后写入成功。已修正 `ApprovalWorld.cs`、`samples/Approval.Host/appsettings.json`、`README.md` 三处。
 
 **干净树对照（项目既定判定法）**：stash 全部改动后原样跑全量，53 个测试仍有 2 个 `HttpRuntimeTests` 失败，错误正是 `database is locked`（SQLite Busy）——证明全量并发下的 SQLite 抖动是存量环境问题，与本次改动无关。修复后本机判定：非 HTTP 48/48 通过、`HttpRuntimeTests` 6/6 通过（含本轮新增用例）；全量一把跑仍可能被另一种存量抖动（`attempt to write a readonly database` 瞬时窗口 + 验证码风险自适应级联）击中，第 13 轮之前即有记录，根因未定位，表现为受害者不固定（两次全量分别击中 Round12 与 ReleaseGate 各 1 个）。
+
+## 第 15 轮：自定义权限位收缩
+
+日期：2026-10-14。第 14 轮把办理类位全部摘除后，自定义位实际在用的只剩 4 个，其中两个特权位还占着 15/16 档高位——本轮做位宽收缩。
+
+**动机**：系统位 `PermissionFlags` 占 1/2/4/8（Detail/Insert/Update/Delete），自定义位从 16 起。第 14 轮之后办理类位（64/128/256/512/1024/2048/4096/8192）全部回收，监控与选人却仍挂在 16384/32768——位图稀疏、可读性差，授权配置时也容易看错档位。
+
+**位映射**（16/32 设计类不动，运行类两个特权位下沉）：
+
+| 位 | 语义 | 位置 | 变化 |
+|---|---|---|---|
+| 16 | 发布 | ApprovalAdmin 流程/表单 Publish | 不动 |
+| 32 | 保存设计 | ApprovalAdmin SaveDesign | 不动 |
+| 64 | 监控 | RuntimeController.Monitor + `HasMonitor` 内联判断 | 16384 → 64 |
+| 256 | 选人 | RuntimeController.Candidates | 32768 → 256 |
+| 128 | （留空） | 历史「查看单据」位，办理类放行后回收备用 | — |
+
+收缩后全部自定义位压缩在 16~256 五档内。**跳过 128 是刻意留位**：第 14 轮把选人与「查看单据」拆开才有的独立位，若选人回占 128，「脱钩」的叙事就模糊了；128 留给未来若恢复查看语义时启用。
+
+**影响面（全部自动适配，零逻辑改动）**：
+
+- `GrantAdmin` 按菜单权限串逐段 `Int32.TryParse` 后 OR，位号怎么编都能覆盖；
+- 测试助手 `Grant`/`GrantFull` 用 `PermissionFlags.All` 或菜单派生掩码，同样与位号无关；
+- 菜单权限串由 UseCube 菜单扫描按控制器特性重新生成，重启宿主即刷新，无手工迁移菜单；
+- 前端（samples/web）无任何位号引用；唯一硬编码是测试里的反射断言，已同步为 `{64, 256}`。
+
+**存量提示**：`Role.Permission` 是数据库快照，旧库升级后角色仍持旧位号授予——开发期项目删库重建即可，生产场景需把角色的审批菜单权限重新授一遍（`GrantAdmin` 对 admin 自动兜底）。
+
+实现：`RuntimeController` 两处特性 + `HasMonitor` 一处内联判断 + 类头/动作 remarks 同步；`HttpRuntimeTests` 反射断言改 `{64, 256}`；样例注释改 256。测试判定同上轮：非 HTTP 48/48、`HttpRuntimeTests` 6/6。

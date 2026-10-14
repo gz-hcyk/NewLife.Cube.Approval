@@ -371,7 +371,7 @@ public class HttpRuntimeTests
 
         // 授权声明收敛：办理控制器只剩监控与选人两个特权位，委托控制器一个不挂。
         // 菜单权限由这些特性生成，查特性比查菜单行确定（UseCube 扫描是异步的，中途查会撞扫描写锁）。
-        Assert.Equal(new[] { 16384, 32768 }, Bits(typeof(RuntimeController)));
+        Assert.Equal(new[] { 64, 256 }, Bits(typeof(RuntimeController)));
         Assert.Empty(Bits(typeof(DelegationController)));
     }
 

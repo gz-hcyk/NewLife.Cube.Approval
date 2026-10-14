@@ -13,8 +13,11 @@ namespace Approval.Web.Areas.Approval.Controllers;
 /// 授权模型（三层，别再给办理动作加回权限位）：
 /// 1. 办理类（发起/草稿/撤回/同意/驳回/转办/加签/待办/已办/抄送/查看/检索）只校验登录，
 ///    真实边界在实体层——办理人、发起人、参与人、委托关系，越权由 ApprovalException 4031 把守；
-/// 2. 「选人」32768 是特权位：Candidates 返回全量用户目录，数据面不限，按需授予；
-/// 3. 「监控」16384 是特权位：可见范围超出参与关系，按需授予。
+/// 2. 「选人」256 是特权位：Candidates 返回全量用户目录，数据面不限，按需授予；
+/// 3. 「监控」64 是特权位：可见范围超出参与关系，按需授予。
+///    两个特权位已从 16384/32768 收缩到低位（第 15 轮）：系统位占 1/2/4/8，
+///    自定义位压缩在 16~256 五档内——16 发布、32 保存设计、64 监控、256 选人，
+///    128 留空（历史「查看单据」位，办理类放行后回收备用）。
 /// 设计类端点（ApprovalAdmin 表单/流程）不在此列，仍按菜单位授权。
 /// </remarks>
 [DisplayName("审批办理")]
@@ -49,10 +52,10 @@ public class RuntimeController : ControllerBaseX
 
     /// <summary>可选用户。本人锁定、代发起选学生、转办选接任人都用这份名单。</summary>
     /// <remarks>
-    /// 唯一数据面不限办理人的端点（返回全量启用用户目录），因此独立高位 32768「选人」按需授权，
-    /// 不随办理类动作默认放行；与查看单据（128）脱钩。监控（16384）同为特权位。
+    /// 唯一数据面不限办理人的端点（返回全量启用用户目录），因此独立特权位 256「选人」按需授权，
+    /// 不随办理类动作默认放行；与历史「查看单据」128 脱钩（该位已回收留空）。监控（64）同为特权位。
     /// </remarks>
-    [EntityAuthorize((PermissionFlags)32768)]
+    [EntityAuthorize((PermissionFlags)256)]
     [DisplayName("选人")]
     [HttpGet]
     public ActionResult Candidates()
@@ -333,7 +336,7 @@ public class RuntimeController : ControllerBaseX
     }
 
     /// <summary>流程监控。按当前用户的数据范围过滤，不改变待办的办理人过滤。</summary>
-    [EntityAuthorize((PermissionFlags)16384)]
+    [EntityAuthorize((PermissionFlags)64)]
     [DisplayName("监控")]
     [HttpGet]
     public ActionResult Monitor()
@@ -439,7 +442,7 @@ public class RuntimeController : ControllerBaseX
         var menu = XCode.Membership.Menu.FindAll().FirstOrDefault(item =>
             (item.FullName ?? "").Contains("Runtime", StringComparison.OrdinalIgnoreCase)
             || (item.Url ?? "").Contains("Runtime", StringComparison.OrdinalIgnoreCase));
-        return menu != null && user.Has(menu, (PermissionFlags)16384);
+        return menu != null && user.Has(menu, (PermissionFlags)64);
     }
 
     private ActionResult Handle(HandleInput? input, Boolean agree)
